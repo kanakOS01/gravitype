@@ -6,4 +6,5 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "textual>=5.3.0",
+    "textual-dev>=1.7.0",
 ]
