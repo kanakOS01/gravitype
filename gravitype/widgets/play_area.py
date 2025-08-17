@@ -1,9 +1,5 @@
-from textual.widgets import Static
+from textual.widget import Widget
 
 
-class PlayArea(Static):
-    def render(self):
-        grid = [[" "]*30 for _ in range(15)]
-        grid[2][5:11] = list("python")
-        grid[5][10:17] = list("gravity")
-        return "\n".join("".join(row) for row in grid)
+class PlayArea(Widget):
+    """Main area where words will appear"""

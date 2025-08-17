@@ -1,28 +1,54 @@
+from textual import on
 from textual.app import App, ComposeResult
-from textual.widgets import Header, Footer
+from textual.binding import Binding
+from textual.containers import Center, Container
+from textual.widgets import Header, Footer, Static
+from textual.reactive import reactive
 
-from gravitype.widgets import PlayArea, StatusBar, TypedArea
+
+
+from .widgets import PlayArea, StatusBar, InputArea
 
 
 class GravitypeApp(App):
     TITLE = "Gravitype"
-    BINDINGS = [("d", "toggle_dark", "Toggle dark mode")]
+    CSS_PATH = "styles/app.tcss"
+    BINDINGS = [
+        Binding(key="^q", action="quit", description="quit"),
+        Binding(
+            key="question_mark",
+            action="help",
+            description="Show help screen",
+            key_display="?",
+        ),
+        # Binding(key="j", action="down", description="Scroll down", show=False),
+    ]
+
+    words = reactive(['kanak'])
+
+    @on(InputArea.Changed)
+    async def on_input_changed(self) -> None:
+        input_area = self.query_one(InputArea)
+        word = input_area.value
+        if word and word in self.words:
+            self.words.remove(word)
+            input_area.clear()
+
 
     def compose(self) -> ComposeResult:
-        """Create child widgets for the app."""
-        yield Header()
-        yield PlayArea()
-        yield StatusBar()
-        yield TypedArea()
+        with Container(classes="main"):    
+            yield PlayArea()
+            # yield Container(
+            #     StatusBar(),
+            #     classes="status-bar",
+            # )
+            yield StatusBar(classes="status-bar")
         yield Footer()
 
-    def action_toggle_dark(self) -> None:
-        """An action to toggle dark mode."""
-        self.theme = (
-            "textual-dark" if self.theme == "textual-light" else "textual-light"
-        )
+
+def main():
+    GravitypeApp().run()
 
 
-if __name__ == '__main__':
-    gravitype_app = GravitypeApp()
-    gravitype_app.run()
+if __name__ == "__main__":
+    main()

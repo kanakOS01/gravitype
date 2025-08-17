@@ -1,10 +1,16 @@
 [project]
 name = "gravitype"
-version = "0.1.0"
-description = "Add your description here"
+version = "0.2.0"
+description = "a fast paced terminal typing game"
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.9"
 dependencies = [
     "textual>=5.3.0",
     "textual-dev>=1.7.0",
 ]
+
+[project.scripts]
+gravitype = "gravitype.app:main"
+
+[tool.uv]
+package = true

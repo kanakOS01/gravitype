@@ -1,0 +1,58 @@
+Screen {
+    layout: vertical;
+    align: center middle;
+}
+
+Container.main {
+    background: $panel;
+    # background: blue; 
+    margin: 1 2;
+    border: round none;
+    layers: below above;
+    height: 100h;
+    align: center middle;
+}
+
+# StatusBar {
+#     min-height: 3h;
+#     height: 3h;
+#     width: 100w;
+#     background: $boost;
+#     layer: above;
+#     dock: top;
+# }
+
+PlayArea {
+    height: 100h;
+    width: 100w;
+    background: $panel;
+    layer: below;
+}
+
+StatusBar {
+    dock: bottom;
+    background: transparent;
+    # height: 7vh;
+    align: center middle;
+    layer: below;
+    padding: 0 3;
+}
+
+InputArea {
+    width: 25w;
+    background: $boost;
+    border: blank;
+    layer: above;
+
+    &>.input--cursor {
+        color: $text-disabled;
+        background: transparent;
+        text-style: none;
+    }
+}
+
+LifeBar {
+    width: auto;
+    margin: 1 0;
+    # color: 9932CC7f;
+}
