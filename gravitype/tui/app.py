@@ -147,6 +147,8 @@ class GameScreen(Screen):
                 event.input.remove_class("typo")
 
     def on_game_board_word_missed(self, event: GameBoard.WordMissed) -> None:
+        if self.app.lives <= 0:
+            return
         self.app.lives -= 1
         self.sync_game_state()
 
