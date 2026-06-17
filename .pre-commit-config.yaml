@@ -1,0 +1,14 @@
+repos:
+  - repo: https://github.com/commitizen-tools/commitizen
+    rev: v4.8.2
+    hooks:
+      - id: commitizen
+        stages: [commit-msg]
+  - repo: https://github.com/charliermarsh/ruff-pre-commit
+    rev: v0.11.11
+    hooks:
+      - id: ruff-check
+        args: [ --fix ]
+        stages: [pre-commit]
+      - id: ruff-format
+        stages: [pre-commit]
