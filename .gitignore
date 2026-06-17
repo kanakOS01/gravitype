@@ -208,3 +208,5 @@ __marimo__/
 
 # Misc
 .python-version
+
+.highscores.json

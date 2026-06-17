@@ -1,5 +1,9 @@
+from gravitype.tui.app import GravitypeApp
+
+
 def main():
-    print("Hello from gravitype!")
+    app = GravitypeApp()
+    app.run()
 
 
 if __name__ == "__main__":
