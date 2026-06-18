@@ -292,7 +292,7 @@ Banner {
 
 /* Switched screens content windows */
 
-AboutScreen, HelpScreen, SettingsScreen {
+WelcomeScreen, AboutScreen, HelpScreen, SettingsScreen {
     align: center middle;
     padding: 1 3;
     height: 1fr;
