@@ -23,19 +23,6 @@ class WordWidget(Widget):
     def update_position(self, board_height: int) -> None:
         self.styles.offset = (self.x, self.y)
 
-        # Remove existing color classes
-        self.remove_class("word-safe")
-        self.remove_class("word-mid")
-        self.remove_class("word-danger")
-
-        # Color shifts as it approaches the bottom
-        if self.y < board_height * 0.5:
-            self.add_class("word-safe")
-        elif self.y < board_height * 0.8:
-            self.add_class("word-mid")
-        else:
-            self.add_class("word-danger")
-
 
 class FloatingScoreWidget(Widget):
     """
@@ -213,3 +200,4 @@ class GameBoard(Widget):
         self.floating_scores.clear()
 
         self.ticks_count = 0
+        self.is_paused = False

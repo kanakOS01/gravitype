@@ -105,11 +105,19 @@ class GameScreen(Screen):
         yield HeaderWidget()
         yield GameBoard()
         with Container(id="input-container"):
-            yield Label("⌨️", id="keyboard-icon")
+            yield Label("> ", id="keyboard-icon")
             yield Input(placeholder="Type the words as they appear...", id="word-input")
 
     def on_mount(self) -> None:
+        self.reset_game_state()
+
+    def on_screen_resume(self) -> None:
+        self.reset_game_state()
+
+    def reset_game_state(self) -> None:
+        self.query_one("#word-input").value = ""
         self.query_one("#word-input").focus()
+        self.query_one(GameBoard).clear_board()
         self.sync_game_state()
 
     def sync_game_state(self) -> None:
@@ -282,6 +290,10 @@ class GravitypeApp(App):
         self.level = 1
         self.lives = config.get("starting_lives", 3)
         self.switch_screen("game")
+        try:
+            self.get_screen("game").reset_game_state()
+        except Exception:
+            pass
 
     def end_game(self) -> None:
         if self.score > self.high_score:

@@ -165,25 +165,12 @@ WordWidget {
     text-style: bold;
     width: auto;
     height: 1;
-}
-
-/* Dynamic color classes for falling words based on depth */
-.word-safe {
-    color: #00ff66;
-}
-
-.word-mid {
-    color: #ffcc00;
-}
-
-.word-danger {
-    color: $error-color;
-    text-style: bold reverse;
+    color: $text-color;
 }
 
 /* Floating feedback score (+10) */
 FloatingScoreWidget {
-    color: #00ff66;
+    color: $main-color;
     text-style: bold;
     width: auto;
     height: 1;
@@ -197,17 +184,20 @@ FloatingScoreWidget {
     background: $sub-alt-color;
     align: center middle;
     border-top: solid $sub-alt-color;
+    padding: 0 4;
 }
 
 #keyboard-icon {
     color: $main-color;
+    text-style: bold;
     margin-right: 1;
-    margin-top: 1;
+    height: 3;
+    content-align: center middle;
 }
 
 #word-input {
-    width: 50;
-    border: tall $sub-alt-color;
+    width: 60;
+    border: tall $sub-color;
     background: $bg-color;
     color: $text-color;
 }
