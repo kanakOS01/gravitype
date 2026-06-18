@@ -1,0 +1,385 @@
+/* Automatically generated active theme: dracula */
+$bg-color: #282a36;
+$main-color: #bd93f9;
+$caret-color: #bd93f9;
+$sub-color: #6272a4;
+$sub-alt-color: #20222c;
+$text-color: #f8f8f2;
+$error-color: #ff5555;
+$error-extra-color: #f1fa8c;
+$colorful-error-color: #ff5555;
+$colorful-error-extra-color: #f1fa8c;
+
+/* Base TCSS layout for Gravitype */
+
+Screen {
+    background: $bg-color;
+    color: $text-color;
+}
+
+/* Welcome and Game Over Screens (Centered Layouts) */
+WelcomeScreen, GameOverScreen {
+    align: center middle;
+}
+
+#menu-container {
+    width: 60;
+    height: auto;
+    background: $sub-alt-color;
+    border: double $main-color;
+    padding: 2 4;
+    align: center top;
+}
+
+#game-over-container {
+    width: 60;
+    height: auto;
+    background: $sub-alt-color;
+    border: double $error-color;
+    padding: 2 4;
+    align: center top;
+}
+
+.title {
+    width: 100%;
+    content-align: center middle;
+    text-style: bold;
+    color: $main-color;
+    margin-bottom: 1;
+}
+
+.game-over-title {
+    width: 100%;
+    content-align: center middle;
+    text-style: bold;
+    color: $error-color;
+    margin-bottom: 1;
+}
+
+.subtitle {
+    width: 100%;
+    content-align: center middle;
+    color: $main-color;
+    margin-bottom: 2;
+}
+
+.label-info {
+    width: 100%;
+    content-align: center middle;
+    margin-bottom: 1;
+    color: $text-color;
+}
+
+/* Category Selection Row */
+#category-container {
+    layout: horizontal;
+    height: 3;
+    margin-bottom: 2;
+    align: center middle;
+    width: 100%;
+}
+
+.category-btn {
+    width: 15;
+    margin: 0 1;
+    background: $bg-color;
+    color: $sub-color;
+    border: tall $main-color 30%;
+}
+
+.category-btn:hover {
+    border: tall $main-color;
+    color: $main-color;
+}
+
+.category-btn.active {
+    background: $main-color;
+    color: $bg-color;
+    text-style: bold;
+    border: tall $main-color;
+}
+
+/* Action Buttons */
+.action-btn {
+    width: 20;
+    margin-top: 1;
+    background: $bg-color;
+    color: $main-color;
+    border: tall $main-color;
+}
+
+.action-btn:hover {
+    background: $main-color;
+    color: $bg-color;
+    text-style: bold;
+}
+
+.danger-btn {
+    width: 20;
+    margin-top: 1;
+    background: $bg-color;
+    color: $error-color;
+    border: tall $error-color;
+}
+
+.danger-btn:hover {
+    background: $error-color;
+    color: $bg-color;
+    text-style: bold;
+}
+
+
+/* --- Game Screen Layout --- */
+
+GameScreen {
+    layout: vertical;
+}
+
+/* Custom Header Widget during Gameplay */
+HeaderWidget {
+    layout: horizontal;
+    background: $sub-alt-color;
+    height: 3;
+    border-bottom: solid $main-color;
+    padding: 0 2;
+}
+
+.header-score {
+    color: $main-color;
+    text-style: bold;
+    width: 1fr;
+    content-align: left middle;
+}
+
+.header-info {
+    color: $text-color;
+    content-align: center middle;
+    width: 1fr;
+}
+
+.header-lives {
+    color: $error-color;
+    content-align: right middle;
+    text-style: bold;
+    width: 1fr;
+}
+
+/* Game Play Board Container */
+GameBoard {
+    background: $bg-color;
+    height: 1fr;
+    border: solid $sub-alt-color;
+    margin: 0;
+}
+
+/* Falling Words */
+WordWidget {
+    text-style: bold;
+    width: auto;
+    height: 1;
+}
+
+/* Dynamic color classes for falling words based on depth */
+.word-safe {
+    color: #00ff66;
+}
+
+.word-mid {
+    color: #ffcc00;
+}
+
+.word-danger {
+    color: $error-color;
+    text-style: bold reverse;
+}
+
+/* Floating feedback score (+10) */
+FloatingScoreWidget {
+    color: #00ff66;
+    text-style: bold;
+    width: auto;
+    height: 1;
+}
+
+
+/* Input Area at the bottom */
+#input-container {
+    layout: horizontal;
+    height: 5;
+    background: $sub-alt-color;
+    align: center middle;
+    border-top: solid $sub-alt-color;
+}
+
+#keyboard-icon {
+    color: $main-color;
+    margin-right: 1;
+    margin-top: 1;
+}
+
+#word-input {
+    width: 50;
+    border: tall $sub-alt-color;
+    background: $bg-color;
+    color: $text-color;
+}
+
+#word-input:focus {
+    border: tall $main-color;
+}
+
+/* Flash classes for input container on hit/miss */
+#input-container.flash-hit {
+    background: #004d26;
+}
+
+#input-container.flash-miss {
+    background: #4d0013;
+}
+
+#word-input.typo {
+    border: tall $error-color;
+    color: $error-color;
+}
+
+
+/* --- Main Layout Navigation Screens (Play Setup, Settings, Help, About) --- */
+
+MainScreen {
+    layout: grid;
+    grid-size: 1 2;
+    grid-rows: 5 1fr;
+    background: $bg-color;
+}
+
+MainHeader {
+    layout: grid;
+    grid-size: 4 1;
+    grid-rows: 5;
+    grid-columns: 1fr 24 8fr 1fr;
+    background: $sub-alt-color;
+}
+
+MainHeader > Horizontal {
+    align: left middle;
+    height: 100%;
+}
+
+NavItem {
+    content-align: center middle;
+    height: auto;
+    width: auto;
+    padding: 0 1;
+    color: $sub-color;
+}
+
+NavItem:hover {
+    color: $text-color;
+    text-style: bold;
+}
+
+NavItem.active {
+    color: $main-color;
+    text-style: bold;
+}
+
+Banner {
+    height: 100%;
+    content-align: center middle;
+    color: $main-color;
+    text-style: bold;
+}
+
+/* Switched screens content windows */
+
+AboutScreen, HelpScreen, SettingsScreen {
+    align: center middle;
+    padding: 1 3;
+}
+
+.about-container, .settings-container, .help-container {
+    width: 76;
+    height: auto;
+    background: $sub-alt-color;
+    border: double $main-color;
+    padding: 2 4;
+}
+
+.about-title, .help-title, .settings-title {
+    width: 100%;
+    content-align: center middle;
+    text-style: bold;
+    color: $main-color;
+    margin-bottom: 2;
+}
+
+.about-text {
+    width: 100%;
+    content-align: center middle;
+    color: $text-color;
+    margin-bottom: 2;
+}
+
+.about-link {
+    width: 100%;
+    content-align: center middle;
+    color: $main-color;
+    text-style: underline;
+}
+
+.about-outro {
+    width: 100%;
+    content-align: center middle;
+    color: $sub-color;
+    margin-top: 2;
+}
+
+/* Settings Controls Row Layouts */
+.setting-row {
+    layout: horizontal;
+    height: 3;
+    align: left middle;
+    margin-bottom: 1;
+    width: 100%;
+}
+
+.setting-label {
+    width: 22;
+    color: $text-color;
+    text-style: bold;
+    content-align: left middle;
+}
+
+.setting-control {
+    width: 1fr;
+    layout: horizontal;
+    align: left middle;
+}
+
+.setting-btn {
+    min-width: 13;
+    margin: 0 1;
+    background: $bg-color;
+    color: $sub-color;
+    border: tall $sub-color 30%;
+}
+
+.setting-btn:hover {
+    border: tall $main-color;
+    color: $main-color;
+}
+
+.setting-btn.active {
+    background: $main-color;
+    color: $bg-color;
+    text-style: bold;
+    border: tall $main-color;
+}
+
+/* Help keybind table styling */
+Table {
+    height: auto;
+    content-align: center middle;
+    align: center middle;
+    margin: 1 2;
+}

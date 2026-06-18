@@ -210,3 +210,4 @@ __marimo__/
 .python-version
 
 .highscores.json
+.gravitype_config.json

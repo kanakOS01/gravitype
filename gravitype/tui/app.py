@@ -1,17 +1,20 @@
-import json
-import os
+from textual import on
 from textual.app import App
 from textual.screen import Screen
-from textual.widgets import Button, Label, Static, Input
+from textual.widget import Widget
+from textual.widgets import Button, Label, Static, Input, ContentSwitcher
 from textual.containers import Container, Horizontal
 from textual.reactive import reactive
 
+from gravitype.core.config import config, generate_theme_file
 from gravitype.tui.widgets.header import HeaderWidget
 from gravitype.tui.widgets.game_board import GameBoard
+from gravitype.tui.widgets.main_header import MainHeader, SetScreen
+from gravitype.tui.widgets.screens import AboutScreen, HelpScreen, SettingsScreen
 
 
-# --- Welcome/Start Menu Screen ---
-class WelcomeScreen(Screen):
+# --- Welcome/Start Menu Screen Widget ---
+class WelcomeScreen(Widget):
     """The initial welcome screen for category selection and game start."""
 
     def compose(self):
@@ -35,11 +38,17 @@ class WelcomeScreen(Screen):
                 yield Button("General", id="cat-general", classes="category-btn")
                 yield Button("Mixed", id="cat-mixed", classes="category-btn")
 
+            yield Label("", id="high-score-label", classes="label-info")
             yield Button("START GAME", id="btn-start", classes="action-btn")
 
     def on_mount(self) -> None:
         # Sync initial state
         self.app.category = "tech"
+        self.update_high_score()
+
+    def update_high_score(self) -> None:
+        label = self.query_one("#high-score-label")
+        label.update(f"High Score: {self.app.high_score:05d}")
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         button_id = event.button.id
@@ -111,6 +120,7 @@ class GameScreen(Screen):
         header.level = self.app.level
         header.category = self.app.category
         header.lives = self.app.lives
+        header.max_lives = config.get("starting_lives", 3)
 
         board.level = self.app.level
         board.category = self.app.category
@@ -155,7 +165,9 @@ class GameScreen(Screen):
         input_container = self.query_one("#input-container")
         input_container.add_class("flash-miss")
         self.set_timer(0.15, lambda: input_container.remove_class("flash-miss"))
-        self.app.bell()
+
+        if config.get("sound_enabled"):
+            self.app.bell()
 
         if self.app.lives <= 0:
             self.app.end_game()
@@ -175,14 +187,69 @@ class GameScreen(Screen):
             input_widget.focus()
 
 
+# --- Main Screen with Header and Switcher ---
+class MainScreen(Screen):
+    """The base navigation container screen with a top header and switcher."""
+
+    BINDINGS = [
+        ("ctrl+q", "quit_app", "Quit"),
+        ("ctrl+s", "switch_settings", "Settings"),
+        ("ctrl+h", "switch_help", "Help"),
+        ("ctrl+a", "switch_about", "About"),
+        ("escape", "switch_play", "Play"),
+        ("ctrl+p", "switch_play", "Play"),
+    ]
+
+    def compose(self):
+        yield MainHeader()
+        yield ContentSwitcher(
+            WelcomeScreen(id="welcome"),
+            SettingsScreen(id="settings"),
+            HelpScreen(id="help"),
+            AboutScreen(id="about"),
+            initial="welcome",
+        )
+
+    def on_mount(self) -> None:
+        self.switch_to_screen("welcome")
+
+    def action_quit_app(self) -> None:
+        self.app.exit()
+
+    def action_switch_settings(self) -> None:
+        self.switch_to_screen("settings")
+
+    def action_switch_help(self) -> None:
+        self.switch_to_screen("help")
+
+    def action_switch_about(self) -> None:
+        self.switch_to_screen("about")
+
+    def action_switch_play(self) -> None:
+        self.switch_to_screen("welcome")
+
+    def switch_to_screen(self, screen_name: str) -> None:
+        switcher = self.query_one(ContentSwitcher)
+        switcher.current = screen_name
+        self.query_one(MainHeader).set_active(screen_name)
+        if screen_name == "welcome":
+            welcome_screen = self.query_one(WelcomeScreen)
+            welcome_screen.update_high_score()
+
+    @on(SetScreen)
+    def handle_set_screen(self, event: SetScreen) -> None:
+        print(f"MainScreen handle_set_screen called: {event.screen_name}", flush=True)
+        self.switch_to_screen(event.screen_name)
+
+
 # --- Main Gravitype Application ---
 class GravitypeApp(App):
     """Main Textual App orchestrating user state, menus, and file state."""
 
-    CSS_PATH = "styles/game.tcss"
+    CSS_PATH = "styles/theme_active.tcss"
 
     SCREENS = {
-        "welcome": WelcomeScreen,
+        "main": MainScreen,
         "game": GameScreen,
         "game_over": GameOverScreen,
     }
@@ -193,37 +260,32 @@ class GravitypeApp(App):
     category = reactive("tech")
     high_score = reactive(0)
 
+    def __init__(self, *args, **kwargs) -> None:
+        # Dynamically compile the active theme before calling super()
+        generate_theme_file(config.get("theme"))
+        super().__init__(*args, **kwargs, watch_css=True)
+
     def on_mount(self) -> None:
-        self.load_high_score()
-        self.push_screen("welcome")
-
-    def load_high_score(self) -> None:
-        try:
-            if os.path.exists(".highscores.json"):
-                with open(".highscores.json", "r") as f:
-                    data = json.load(f)
-                    self.high_score = data.get("high_score", 0)
-        except Exception:
-            self.high_score = 0
-
-    def save_high_score(self) -> None:
-        try:
-            with open(".highscores.json", "w") as f:
-                json.dump({"high_score": self.high_score}, f)
-        except Exception:
-            pass
+        self.high_score = config.get("high_score", 0)
+        self.lives = config.get("starting_lives", 3)
+        self.push_screen("main")
 
     def show_menu(self) -> None:
-        self.switch_screen("welcome")
+        self.switch_screen("main")
 
     def start_new_game(self) -> None:
         self.score = 0
         self.level = 1
-        self.lives = 3
+        self.lives = config.get("starting_lives", 3)
         self.switch_screen("game")
 
     def end_game(self) -> None:
         if self.score > self.high_score:
             self.high_score = self.score
-            self.save_high_score()
+            config.set("high_score", self.high_score)
         self.switch_screen("game_over")
+
+    def action_open_github(self) -> None:
+        import webbrowser
+
+        webbrowser.open("https://github.com/macbook/gravitype")
