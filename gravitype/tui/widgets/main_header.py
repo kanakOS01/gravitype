@@ -1,55 +1,32 @@
-from typing import Optional
 from rich.console import RenderableType
 from textual.app import ComposeResult
 from textual.containers import Horizontal
 from textual.widget import Widget
-from textual.widgets import Static
-from textual.message import Message
+from textual.widgets import Static, Button
 from gravitype.tui.widgets.figlet import generate_figlet
 
 
-class SetScreen(Message):
-    """Message posted to switch active screen in ContentSwitcher."""
-
-    def __init__(self, screen_name: str) -> None:
-        super().__init__()
-        self.screen_name = screen_name
-
-
-class NavItemBase(Widget):
-    """
-    Base Widget for Header NavItems
-    """
-
-    def __init__(self, text: str, screen_name: Optional[str] = None, **kwargs) -> None:
-        super().__init__(**kwargs)
-        self.text = text
-        self.screen_name = screen_name
-
-    def on_click(self, event) -> None:
-        print(f"NavItemBase on_click called for {self.screen_name}", flush=True)
-        if self.screen_name:
-            self.post_message(SetScreen(self.screen_name))
-
-    def render(self) -> RenderableType:
-        return self.text
-
-
-class Banner(NavItemBase):
+class Banner(Static):
     """
     Text Widget to render text in a bigger font using Figlet
     """
+
+    def __init__(self, text: str, **kwargs) -> None:
+        super().__init__(**kwargs)
+        self.text = text
 
     def render(self) -> RenderableType:
         return generate_figlet(self.text)
 
 
-class NavItem(NavItemBase):
+class NavItem(Button):
     """
-    A navigation menu tab item
+    A navigation menu tab item using Button for maximum click compatibility and keyboard accessibility
     """
 
-    pass
+    def __init__(self, text: str, screen_name: str, **kwargs) -> None:
+        super().__init__(text, **kwargs)
+        self.screen_name = screen_name
 
 
 class MainHeader(Widget):
@@ -59,7 +36,7 @@ class MainHeader(Widget):
 
     def compose(self) -> ComposeResult:
         yield Static()  # Spacer
-        yield Banner("gravitype", "welcome")
+        yield Banner("gravitype")
 
         with Horizontal():
             play_item = NavItem("🕹️ play", "welcome")

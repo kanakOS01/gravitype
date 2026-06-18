@@ -9,7 +9,7 @@ from textual.reactive import reactive
 from gravitype.core.config import config, generate_theme_file
 from gravitype.tui.widgets.header import HeaderWidget
 from gravitype.tui.widgets.game_board import GameBoard
-from gravitype.tui.widgets.main_header import MainHeader, SetScreen
+from gravitype.tui.widgets.main_header import MainHeader, NavItem
 from gravitype.tui.widgets.screens import AboutScreen, HelpScreen, SettingsScreen
 
 
@@ -236,10 +236,14 @@ class MainScreen(Screen):
             welcome_screen = self.query_one(WelcomeScreen)
             welcome_screen.update_high_score()
 
-    @on(SetScreen)
-    def handle_set_screen(self, event: SetScreen) -> None:
-        print(f"MainScreen handle_set_screen called: {event.screen_name}", flush=True)
-        self.switch_to_screen(event.screen_name)
+    @on(Button.Pressed)
+    def handle_nav_button(self, event: Button.Pressed) -> None:
+        if isinstance(event.button, NavItem):
+            print(
+                f"MainScreen handle_nav_button called: {event.button.screen_name}",
+                flush=True,
+            )
+            self.switch_to_screen(event.button.screen_name)
 
 
 # --- Main Gravitype Application ---
