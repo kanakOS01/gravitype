@@ -11,25 +11,26 @@ WelcomeScreen, GameOverScreen {
 }
 
 #menu-container {
-    width: 60;
+    width: 82;
     height: auto;
     background: $sub-alt-color;
     border: double $main-color;
-    padding: 2 4;
+    padding: 2 2;
     align: center top;
 }
 
 #game-over-container {
-    width: 60;
+    width: 82;
     height: auto;
     background: $sub-alt-color;
     border: double $error-color;
-    padding: 2 4;
+    padding: 2 2;
     align: center top;
 }
 
 .title {
     width: 100%;
+    height: 6;
     content-align: center middle;
     text-style: bold;
     color: $main-color;
@@ -226,21 +227,20 @@ FloatingScoreWidget {
 MainScreen {
     layout: grid;
     grid-size: 1 2;
-    grid-rows: 5 1fr;
+    grid-rows: 3 1fr;
     background: $bg-color;
 }
 
 MainHeader {
-    layout: grid;
-    grid-size: 4 1;
-    grid-rows: 5;
-    grid-columns: 1fr 24 8fr 1fr;
+    align: center middle;
     background: $sub-alt-color;
+    height: 3;
 }
 
 MainHeader > Horizontal {
-    align: left middle;
+    align: center middle;
     height: 100%;
+    width: auto;
 }
 
 NavItem {
@@ -274,7 +274,7 @@ NavItem.active {
 }
 
 Banner {
-    height: 100%;
+    height: auto;
     content-align: center middle;
     color: $main-color;
     text-style: bold;

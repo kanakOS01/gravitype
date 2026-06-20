@@ -2,14 +2,14 @@ from textual import on
 from textual.app import App
 from textual.screen import Screen
 from textual.widget import Widget
-from textual.widgets import Button, Label, Static, Input, ContentSwitcher
+from textual.widgets import Button, Label, Input, ContentSwitcher
 from textual.containers import Container, Horizontal
 from textual.reactive import reactive
 
 from gravitype.core.config import config, generate_theme_file
 from gravitype.tui.widgets.header import HeaderWidget
 from gravitype.tui.widgets.game_board import GameBoard
-from gravitype.tui.widgets.main_header import MainHeader, NavItem
+from gravitype.tui.widgets.main_header import MainHeader, NavItem, Banner
 from gravitype.tui.widgets.screens import AboutScreen, HelpScreen, SettingsScreen
 
 
@@ -19,18 +19,7 @@ class WelcomeScreen(Widget):
 
     def compose(self):
         with Container(id="menu-container"):
-            yield Static(
-                "  ________                      .__  __                      \n"
-                " /  _____/___________ ___  __ _|__|/  |_ ___.__.______   ____ \n"
-                "/   \\  __\\_  __ \\__  \\\\  \\/ /|  |  \\   __<   |  |\\____ \\_/ __ \\\n"
-                "\\    \\_\\  \\  | \\// __ \\\\   / |  |  ||  |  \\___  ||  |_> >  ___/\n"
-                " \\______  /__|  (____  /\\_/  |____/ |__|  / ____||   __/ \\___  >\n"
-                "        \\/           \\/                   \\/     |__|        \\/ ",
-                classes="title",
-            )
-            yield Label(
-                "A Neon Gravity Typing Game in your Terminal", classes="subtitle"
-            )
+            yield Banner(classes="title")
 
             yield Label("Select Category:")
             with Horizontal(id="category-container"):

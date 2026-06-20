@@ -28,7 +28,7 @@ class AboutScreen(Widget):
         with Container(classes="about-container"):
             yield Label("ABOUT GRAVITYPE", classes="about-title")
             yield Static(
-                "Gravitype is a Neon Terminal Typing Game where words fall from the sky. "
+                "Gravitype is a Terminal Typing Game where words fall from the sky. "
                 "Your objective is to type the words before they hit the bottom border!\n\n"
                 "Inspired by the smassh typing client, this game features dynamic "
                 "color themes, persistent high-scores, statistics, and a sleek keyboard layout.\n\n"

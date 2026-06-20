@@ -1,22 +1,30 @@
-from rich.console import RenderableType
 from textual.app import ComposeResult
 from textual.containers import Horizontal
 from textual.widget import Widget
 from textual.widgets import Static, Button
-from gravitype.tui.widgets.figlet import generate_figlet
+
+BANNER_TEXT = """\
+ ██████╗ ██████╗  █████╗ ██╗   ██╗██╗████████╗██╗   ██╗██████╗ ███████╗
+██╔════╝ ██╔══██╗██╔══██╗██║   ██║██║╚══██╔══╝╚██╗ ██╔╝██╔══██╗██╔════╝
+██║  ███╗██████╔╝███████║██║   ██║██║   ██║    ╚████╔╝ ██████╔╝█████╗  
+██║   ██║██╔══██╗██╔══██║╚██╗ ██╔╝██║   ██║     ╚██╔╝  ██╔═══╝ ██╔══╝  
+╚██████╔╝██║  ██║██║  ██║ ╚████╔╝ ██║   ██║      ██║   ██║     ███████╗
+ ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝  ╚═══╝  ╚═╝   ╚═╝      ╚═╝   ╚═╝     ╚══════╝"""
+
+# BANNER_TEXT = """\
+# ┏━┓┏━┓┏━┓╻ ╻╻╺┳╸╻ ╻┏━┓┏━╸
+# ┃╺┓┣┳┛┣━┫┗┳┛┃ ┃ ┗┳┛┣━┛┣╸
+# ┗━┛╹┗╸╹ ╹ ╹ ╹ ╹  ╹ ┗╸ ┗━╸
+# """
 
 
 class Banner(Static):
     """
-    Text Widget to render text in a bigger font using Figlet
+    Text Widget to render the hardcoded GRAVITYPE banner using Unicode block text.
     """
 
-    def __init__(self, text: str, **kwargs) -> None:
-        super().__init__(**kwargs)
-        self.text = text
-
-    def render(self) -> RenderableType:
-        return generate_figlet(self.text)
+    def __init__(self, **kwargs) -> None:
+        super().__init__(BANNER_TEXT, **kwargs)
 
 
 class NavItem(Button):
@@ -35,9 +43,6 @@ class MainHeader(Widget):
     """
 
     def compose(self) -> ComposeResult:
-        yield Static()  # Spacer
-        yield Banner("gravitype")
-
         with Horizontal():
             play_item = NavItem("▶ play", "welcome")
             play_item.add_class("active")
