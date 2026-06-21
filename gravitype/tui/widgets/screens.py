@@ -1,12 +1,13 @@
+from textual import on
 from textual.app import ComposeResult
 from textual.containers import Container, Horizontal
 from textual.widget import Widget
-from textual.widgets import Button, Label, Static
+from textual.widgets import Label, Static, Select
 from gravitype.core.config import config, generate_theme_file
 from gravitype.tui.widgets.table import Table
 
 GENERAL_KEYBINDS = [
-    ("ctrl+q", "Quit Game"),
+    ("ctrl+q", "Quit App"),
     ("ctrl+s", "Navigate to Settings"),
     ("ctrl+h / ?", "Navigate to Help"),
     ("ctrl+a", "Navigate to About"),
@@ -15,6 +16,7 @@ GENERAL_KEYBINDS = [
 
 TYPING_KEYBINDS = [
     ("escape", "Pause / Resume Falling Game"),
+    ("ctrl+q", "Exit to Main Menu"),
     ("ctrl+w / ctrl+backspace", "Clear current input word"),
 ]
 
@@ -64,70 +66,79 @@ class SettingsScreen(Widget):
             yield Label("SETTINGS", classes="settings-title")
 
             # Theme selection
-            yield Label("Color Theme", classes="setting-label")
             with Horizontal(classes="setting-row"):
-                yield Button("Dracula", id="theme-dracula", classes="setting-btn")
-                yield Button("Nord", id="theme-nord", classes="setting-btn")
-                yield Button(
-                    "Tokyo Night", id="theme-tokyonight", classes="setting-btn"
-                )
-
-            with Horizontal(classes="setting-row"):
-                yield Button("Gruvbox", id="theme-gruvbox_dark", classes="setting-btn")
-                yield Button("Catppuccin", id="theme-catppuccin", classes="setting-btn")
-                yield Button("Cyberspace", id="theme-cyberspace", classes="setting-btn")
-                yield Button(
-                    "80s Dark", id="theme-80s_after_dark", classes="setting-btn"
+                yield Label("Color Theme", classes="setting-label")
+                yield Select(
+                    options=[
+                        ("Dracula", "dracula"),
+                        ("Nord", "nord"),
+                        ("Tokyo Night", "tokyonight"),
+                        ("Gruvbox", "gruvbox_dark"),
+                        ("Catppuccin", "catppuccin"),
+                        ("Cyberspace", "cyberspace"),
+                        ("80s Dark", "80s_after_dark"),
+                    ],
+                    value=config.get("theme"),
+                    allow_blank=False,
+                    id="select-theme",
                 )
 
             # Sound selection
-            yield Label("Sound Feedback (Bell)", classes="setting-label")
             with Horizontal(classes="setting-row"):
-                yield Button("ON", id="sound-on", classes="setting-btn")
-                yield Button("OFF", id="sound-off", classes="setting-btn")
+                yield Label("Sound (Bell)", classes="setting-label")
+                yield Select(
+                    options=[
+                        ("ON", "on"),
+                        ("OFF", "off"),
+                    ],
+                    value="on" if config.get("sound_enabled") else "off",
+                    allow_blank=False,
+                    id="select-sound",
+                )
 
             # Lives selection
-            yield Label("Starting Lives", classes="setting-label")
             with Horizontal(classes="setting-row"):
-                yield Button("3 Lives", id="lives-3", classes="setting-btn")
-                yield Button("5 Lives", id="lives-5", classes="setting-btn")
-                yield Button("8 Lives", id="lives-8", classes="setting-btn")
+                yield Label("Starting Lives", classes="setting-label")
+                yield Select(
+                    options=[
+                        ("3 Lives", "3"),
+                        ("5 Lives", "5"),
+                        ("8 Lives", "8"),
+                    ],
+                    value=str(config.get("starting_lives")),
+                    allow_blank=False,
+                    id="select-lives",
+                )
 
     def on_mount(self) -> None:
         self.sync_settings()
 
     def sync_settings(self) -> None:
-        # 1. Sync theme buttons
-        active_theme = config.get("theme")
-        for btn in self.query(".setting-btn"):
-            if btn.id.startswith("theme-"):
-                theme_id = btn.id.replace("theme-", "")
-                btn.set_class(theme_id == active_theme, "active")
+        theme_val = config.get("theme")
+        sound_val = "on" if config.get("sound_enabled") else "off"
+        lives_val = str(config.get("starting_lives"))
 
-        # 2. Sync sound buttons
-        sound_enabled = config.get("sound_enabled")
-        self.query_one("#sound-on").set_class(sound_enabled, "active")
-        self.query_one("#sound-off").set_class(not sound_enabled, "active")
+        try:
+            self.query_one("#select-theme", Select).value = theme_val
+            self.query_one("#select-sound", Select).value = sound_val
+            self.query_one("#select-lives", Select).value = lives_val
+        except Exception:
+            pass
 
-        # 3. Sync lives buttons
-        starting_lives = config.get("starting_lives")
-        self.query_one("#lives-3").set_class(starting_lives == 3, "active")
-        self.query_one("#lives-5").set_class(starting_lives == 5, "active")
-        self.query_one("#lives-8").set_class(starting_lives == 8, "active")
+    @on(Select.Changed)
+    def on_select_changed(self, event: Select.Changed) -> None:
+        select_id = event.select.id
+        value = event.value
 
-    def on_button_pressed(self, event: Button.Pressed) -> None:
-        button_id = event.button.id
-        if button_id.startswith("theme-"):
-            new_theme = button_id.replace("theme-", "")
-            config.set("theme", new_theme)
-            generate_theme_file(new_theme)
-        elif button_id == "sound-on":
-            config.set("sound_enabled", True)
-        elif button_id == "sound-off":
-            config.set("sound_enabled", False)
-        elif button_id.startswith("lives-"):
-            new_lives = int(button_id.replace("lives-", ""))
+        if value is None or value == Select.BLANK:
+            return
+
+        if select_id == "select-theme":
+            config.set("theme", value)
+            generate_theme_file(value)
+        elif select_id == "select-sound":
+            config.set("sound_enabled", value == "on")
+        elif select_id == "select-lives":
+            new_lives = int(value)
             config.set("starting_lives", new_lives)
             self.app.lives = new_lives
-
-        self.sync_settings()

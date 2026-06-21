@@ -2,7 +2,7 @@ from textual import on
 from textual.app import App
 from textual.screen import Screen
 from textual.widget import Widget
-from textual.widgets import Button, Label, Input, ContentSwitcher
+from textual.widgets import Button, Label, Input, ContentSwitcher, Footer
 from textual.containers import Container, Horizontal
 from textual.reactive import reactive
 
@@ -88,14 +88,18 @@ class GameOverScreen(Screen):
 class GameScreen(Screen):
     """The active game screen containing the falling board, input field and header."""
 
-    BINDINGS = [("escape", "toggle_pause", "Pause/Resume Game")]
+    BINDINGS = [
+        ("escape", "toggle_pause", "Pause/Resume Game"),
+        ("ctrl+q", "exit_to_menu", "Exit to Menu"),
+    ]
 
     def compose(self):
         yield HeaderWidget()
         yield GameBoard()
         with Container(id="input-container"):
-            yield Label("> ", id="keyboard-icon")
+            yield Label("  ", id="keyboard-icon")
             yield Input(placeholder="Type the words as they appear...", id="word-input")
+        yield Footer()
 
     def on_mount(self) -> None:
         self.reset_game_state()
@@ -176,12 +180,15 @@ class GameScreen(Screen):
         input_widget = self.query_one("#word-input")
         if board.is_paused:
             input_widget.disabled = True
-            input_widget.placeholder = "PAUSED - Press ESC to Resume"
+            input_widget.placeholder = "PAUSED - ESC to Resume | Ctrl+Q to Exit"
             input_widget.value = ""
         else:
             input_widget.disabled = False
             input_widget.placeholder = "Type the words as they appear..."
             input_widget.focus()
+
+    def action_exit_to_menu(self) -> None:
+        self.app.show_menu()
 
 
 # --- Main Screen with Header and Switcher ---
@@ -206,6 +213,7 @@ class MainScreen(Screen):
             AboutScreen(id="about"),
             initial="welcome",
         )
+        yield Footer()
 
     def on_mount(self) -> None:
         self.switch_to_screen("welcome")
@@ -247,6 +255,7 @@ class MainScreen(Screen):
 class GravitypeApp(App):
     """Main Textual App orchestrating user state, menus, and file state."""
 
+    ENABLE_COMMAND_PALETTE = False
     CSS_PATH = "styles/theme_active.tcss"
 
     SCREENS = {
@@ -293,4 +302,4 @@ class GravitypeApp(App):
     def action_open_github(self) -> None:
         import webbrowser
 
-        webbrowser.open("https://github.com/macbook/gravitype")
+        webbrowser.open("https://github.com/kanakOS01/gravitype")

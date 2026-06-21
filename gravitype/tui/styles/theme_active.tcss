@@ -1,14 +1,14 @@
-/* Automatically generated active theme: nord */
-$bg-color: #242933;
-$caret-color: #eceff4;
-$main-color: #88c0d0;
-$sub-color: #929aaa;
-$sub-alt-color: #2e3440;
-$text-color: #d8dee9;
-$error-color: #bf616a;
-$error-extra-color: #793e44;
-$colorful-error-color: #bf616a;
-$colorful-error-extra-color: #793e44;
+/* Automatically generated active theme: catppuccin */
+$bg-color: #1e1e2e;
+$caret-color: #fae3b0;
+$main-color: #abe9b3;
+$sub-color: #575268;
+$sub-alt-color: #292739;
+$text-color: #d9e0ee;
+$error-color: #f28fad;
+$error-extra-color: #e8a2af;
+$colorful-error-color: #f28fad;
+$colorful-error-extra-color: #e8a2af;
 
 /* Base TCSS layout for Gravitype */
 
@@ -237,10 +237,12 @@ FloatingScoreWidget {
 /* --- Main Layout Navigation Screens (Play Setup, Settings, Help, About) --- */
 
 MainScreen {
-    layout: grid;
-    grid-size: 1 2;
-    grid-rows: 3 1fr;
+    layout: vertical;
     background: $bg-color;
+}
+
+MainScreen > ContentSwitcher {
+    height: 1fr;
 }
 
 MainHeader {
@@ -353,30 +355,39 @@ WelcomeScreen, AboutScreen, HelpScreen, SettingsScreen {
     content-align: left middle;
 }
 
-.setting-control {
+Select {
     width: 1fr;
-    layout: horizontal;
-    align: left middle;
-}
-
-.setting-btn {
-    min-width: 13;
+    height: 3;
     margin: 0 1;
-    background: $bg-color;
-    color: $sub-color;
-    border: tall $sub-color 30%;
 }
 
-.setting-btn:hover {
+SelectCurrent {
+    background: $bg-color;
+    border: tall $sub-color 30%;
+    color: $text-color;
+}
+
+SelectCurrent:hover {
     border: tall $main-color;
     color: $main-color;
 }
 
-.setting-btn.active {
-    background: $main-color;
-    color: $bg-color;
-    text-style: bold;
+Select:focus > SelectCurrent {
     border: tall $main-color;
+    color: $text-color;
+}
+
+SelectCurrent Static#label {
+    color: $sub-color;
+}
+
+SelectCurrent.-has-value Static#label {
+    color: $text-color;
+}
+
+SelectOverlay {
+    border: tall $sub-color;
+    background: $bg-color;
 }
 
 /* Help keybind table styling */
@@ -385,4 +396,28 @@ Table {
     content-align: center middle;
     align: center middle;
     margin: 1 2;
+}
+
+/* Footer styling */
+Footer {
+    background: $sub-alt-color;
+    color: $sub-color;
+    height: 1;
+}
+
+Footer > .footer--key {
+    background: $sub-alt-color;
+    color: $main-color;
+    text-style: bold;
+}
+
+Footer > .footer--highlight {
+    background: $main-color;
+    color: $bg-color;
+}
+
+Footer > .footer--highlight-key {
+    background: $main-color;
+    color: $bg-color;
+    text-style: bold;
 }

@@ -11,11 +11,13 @@ class WordWidget(Widget):
     Widget representing a single falling word on the board.
     """
 
-    def __init__(self, text: str, x: int, y: int, **kwargs):
+    def __init__(self, text: str, x: int, y: int, move_ticks: int, **kwargs):
         super().__init__(**kwargs)
         self.text = text
         self.x = x
         self.y = y
+        self.move_ticks = move_ticks
+        self.ticks_since_move = 0
 
     def render(self) -> Text:
         return Text(self.text)
@@ -63,10 +65,14 @@ class GameBoard(Widget):
 
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
+        self.border_title = ""
         self.active_words = []
         self.floating_scores = []
         self.ticks_count = 0
         self.game_timer = None
+
+    def render(self) -> str:
+        return ""
 
     def on_mount(self) -> None:
         # High-frequency tick for animations and smooth tracking
@@ -123,8 +129,12 @@ class GameBoard(Widget):
             self.spawn_word(word_str)
 
         # 3. Move active words down
-        if self.ticks_count % move_ticks == 0:
-            for word in self.active_words[:]:
+        for word in self.active_words[:]:
+            ticks_since = getattr(word, "ticks_since_move", 0) + 1
+            word.ticks_since_move = ticks_since
+            target_ticks = getattr(word, "move_ticks", move_ticks)
+            if ticks_since >= target_ticks:
+                word.ticks_since_move = 0
                 word.y += 1
                 # Check collision with the bottom boundary
                 if word.y >= board_height:
@@ -152,7 +162,8 @@ class GameBoard(Widget):
                 best_x = x
                 break
 
-        word_widget = WordWidget(word_text, best_x, 0)
+        move_ticks, _ = self.get_ticks_for_level(self.level)
+        word_widget = WordWidget(word_text, best_x, 0, move_ticks)
         self.mount(word_widget)
         self.active_words.append(word_widget)
         word_widget.update_position(self.size.height or 20)

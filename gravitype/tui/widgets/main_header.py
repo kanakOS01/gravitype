@@ -44,12 +44,12 @@ class MainHeader(Widget):
 
     def compose(self) -> ComposeResult:
         with Horizontal():
-            play_item = NavItem("▶ play", "welcome")
+            play_item = NavItem(" play", "welcome")
             play_item.add_class("active")
             yield play_item
-            yield NavItem("settings", "settings")
-            yield NavItem("help", "help")
-            yield NavItem("about", "about")
+            yield NavItem(" settings", "settings")
+            yield NavItem(" help", "help")
+            yield NavItem(" about", "about")
 
     def set_active(self, name: str) -> None:
         for i in self.query(NavItem):
