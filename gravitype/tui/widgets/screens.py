@@ -2,12 +2,14 @@ from textual import on
 from textual.app import ComposeResult
 from textual.containers import Container, Horizontal
 from textual.widget import Widget
-from textual.widgets import Label, Static, Select
+from textual.widgets import DataTable, Label, Static, Select
 from gravitype.core.config import config, generate_theme_file
+from gravitype.core.storage import storage
 from gravitype.tui.widgets.table import Table
 
 GENERAL_KEYBINDS = [
     ("ctrl+q", "Quit App"),
+    ("ctrl+t", "Navigate to Stats"),
     ("ctrl+s", "Navigate to Settings"),
     ("ctrl+h / ?", "Navigate to Help"),
     ("ctrl+a", "Navigate to About"),
@@ -54,6 +56,70 @@ class HelpScreen(Widget):
             yield Label("HOW TO PLAY & KEYBINDS", classes="help-title")
             yield Table("General Navigation", GENERAL_KEYBINDS)
             yield Table("Active Gameplay", TYPING_KEYBINDS)
+
+
+class StatsScreen(Widget):
+    """
+    Stats screen showing aggregate history and recent completed games.
+    """
+
+    def compose(self) -> ComposeResult:
+        with Container(classes="stats-container"):
+            yield Label("STATS", classes="stats-title")
+            yield Label("", id="stats-summary", classes="stats-summary")
+            yield Label("", id="stats-categories", classes="stats-categories")
+            yield DataTable(id="recent-games-table")
+
+    def on_mount(self) -> None:
+        table = self.query_one("#recent-games-table", DataTable)
+        table.cursor_type = "row"
+        table.zebra_stripes = True
+        table.add_columns("Ended", "Cat", "Score", "Level", "Words", "Misses", "Time")
+        self.refresh_stats()
+
+    def refresh_stats(self) -> None:
+        stats = storage.get_stats()
+        summary = (
+            f"Games {stats['games_played']}  |  "
+            f"High {stats['high_score']:05d}  |  "
+            f"Avg {stats['average_score']:05d}  |  "
+            f"Best Lvl {stats['best_level']}  |  "
+            f"Words {stats['total_words_cleared']}  |  "
+            f"Misses {stats['total_misses']}"
+        )
+        self.query_one("#stats-summary", Label).update(summary)
+
+        category_parts = []
+        for category in ("tech", "general", "mixed"):
+            bucket = stats["by_category"].get(category, {})
+            category_parts.append(
+                f"{category.upper()}: {bucket.get('games', 0)} games, "
+                f"best {bucket.get('high_score', 0):05d}"
+            )
+        self.query_one("#stats-categories", Label).update("  |  ".join(category_parts))
+
+        table = self.query_one("#recent-games-table", DataTable)
+        table.clear()
+        for game in stats["recent_games"]:
+            table.add_row(
+                self._short_time(str(game.get("ended_at", ""))),
+                str(game.get("category", "")).upper(),
+                f"{int(game.get('score', 0) or 0):05d}",
+                str(game.get("level_reached", 0)),
+                str(game.get("words_cleared", 0)),
+                str(game.get("words_missed", 0)),
+                self._format_duration(int(game.get("duration_seconds", 0) or 0)),
+            )
+
+    def _short_time(self, value: str) -> str:
+        if "T" not in value:
+            return value[:16]
+        date_part, time_part = value.split("T", 1)
+        return f"{date_part} {time_part[:5]}"
+
+    def _format_duration(self, seconds: int) -> str:
+        minutes, remaining = divmod(max(0, seconds), 60)
+        return f"{minutes}:{remaining:02d}"
 
 
 class SettingsScreen(Widget):

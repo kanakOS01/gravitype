@@ -47,6 +47,7 @@ class MainHeader(Widget):
             play_item = NavItem(" play", "welcome")
             play_item.add_class("active")
             yield play_item
+            yield NavItem(" stats", "stats")
             yield NavItem(" settings", "settings")
             yield NavItem(" help", "help")
             yield NavItem(" about", "about")

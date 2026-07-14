@@ -1,45 +1,19 @@
-import json
 from pathlib import Path
-
-DEFAULT_CONFIG = {
-    "high_score": 0,
-    "theme": "dracula",
-    "sound_enabled": True,
-    "starting_lives": 3,
-}
+from gravitype.core.storage import DEFAULT_CONFIG, storage
 
 
 class Config:
     def __init__(self):
-        self.config_path = Path(".gravitype_config.json")
+        self.storage = storage
+        self.config_path = self.storage.config_path
         self.config = DEFAULT_CONFIG.copy()
         self.load()
 
     def load(self):
-        if self.config_path.exists():
-            try:
-                with open(self.config_path, "r") as f:
-                    user_data = json.load(f)
-                    for k, v in user_data.items():
-                        if k in DEFAULT_CONFIG:
-                            # Safely cast to expected type
-                            if isinstance(DEFAULT_CONFIG[k], bool):
-                                self.config[k] = bool(v)
-                            elif isinstance(DEFAULT_CONFIG[k], int):
-                                self.config[k] = int(v)
-                            else:
-                                self.config[k] = str(v)
-            except Exception:
-                self.config = DEFAULT_CONFIG.copy()
-        else:
-            self.save()
+        self.config = self.storage.load_config()
 
     def save(self):
-        try:
-            with open(self.config_path, "w") as f:
-                json.dump(self.config, f, indent=4)
-        except Exception:
-            pass
+        self.storage.save_config(self.config)
 
     def get(self, key, default=None):
         return self.config.get(

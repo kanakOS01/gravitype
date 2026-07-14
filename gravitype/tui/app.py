@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 from textual import on
 from textual.app import App
 from textual.screen import Screen
@@ -7,10 +9,16 @@ from textual.containers import Container, Horizontal
 from textual.reactive import reactive
 
 from gravitype.core.config import config, generate_theme_file
+from gravitype.core.storage import storage
 from gravitype.tui.widgets.header import HeaderWidget
 from gravitype.tui.widgets.game_board import GameBoard
 from gravitype.tui.widgets.main_header import MainHeader, NavItem, Banner
-from gravitype.tui.widgets.screens import AboutScreen, HelpScreen, SettingsScreen
+from gravitype.tui.widgets.screens import (
+    AboutScreen,
+    HelpScreen,
+    SettingsScreen,
+    StatsScreen,
+)
 
 
 # --- Welcome/Start Menu Screen Widget ---
@@ -59,16 +67,27 @@ class GameOverScreen(Screen):
             yield Label("GAME OVER", classes="game-over-title")
             yield Label(f"Score: {self.app.score:05d}", classes="subtitle")
 
-            is_new_high = self.app.score > self.app.high_score
             high_score_text = (
                 f"High Score: {max(self.app.score, self.app.high_score):05d}"
             )
-            if is_new_high:
+            if self.app.last_game_was_high_score:
                 high_score_text += " [NEW HIGH SCORE!]"
 
             yield Label(high_score_text, classes="label-info")
             yield Label(f"Level Reached: {self.app.level}", classes="label-info")
             yield Label(f"Category: {self.app.category.upper()}", classes="label-info")
+            yield Label(
+                f"Duration: {self.app.format_duration(self.app.last_game_stats.get('duration_seconds', 0))}",
+                classes="label-info",
+            )
+            yield Label(
+                f"Words Cleared: {self.app.last_game_stats.get('words_cleared', 0)}",
+                classes="label-info",
+            )
+            yield Label(
+                f"Words Missed: {self.app.last_game_stats.get('words_missed', 0)}",
+                classes="label-info",
+            )
 
             yield Button("PLAY AGAIN", id="btn-retry", classes="action-btn")
             yield Button("MAIN MENU", id="btn-menu", classes="action-btn")
@@ -138,6 +157,7 @@ class GameScreen(Screen):
 
         if score_gained > 0:
             self.app.score += score_gained
+            self.app.words_cleared += 1
             # Increase level every 150 points
             self.app.level = 1 + (self.app.score // 150)
 
@@ -161,6 +181,7 @@ class GameScreen(Screen):
         if self.app.lives <= 0:
             return
         self.app.lives -= 1
+        self.app.words_missed += 1
         self.sync_game_state()
 
         input_container = self.query_one("#input-container")
@@ -197,6 +218,7 @@ class MainScreen(Screen):
 
     BINDINGS = [
         ("ctrl+q", "quit_app", "Quit"),
+        ("ctrl+t", "switch_stats", "Stats"),
         ("ctrl+s", "switch_settings", "Settings"),
         ("ctrl+h", "switch_help", "Help"),
         ("ctrl+a", "switch_about", "About"),
@@ -208,6 +230,7 @@ class MainScreen(Screen):
         yield MainHeader()
         yield ContentSwitcher(
             WelcomeScreen(id="welcome"),
+            StatsScreen(id="stats"),
             SettingsScreen(id="settings"),
             HelpScreen(id="help"),
             AboutScreen(id="about"),
@@ -223,6 +246,9 @@ class MainScreen(Screen):
 
     def action_switch_settings(self) -> None:
         self.switch_to_screen("settings")
+
+    def action_switch_stats(self) -> None:
+        self.switch_to_screen("stats")
 
     def action_switch_help(self) -> None:
         self.switch_to_screen("help")
@@ -240,6 +266,8 @@ class MainScreen(Screen):
         if screen_name == "welcome":
             welcome_screen = self.query_one(WelcomeScreen)
             welcome_screen.update_high_score()
+        elif screen_name == "stats":
+            self.query_one(StatsScreen).refresh_stats()
 
     @on(Button.Pressed)
     def handle_nav_button(self, event: Button.Pressed) -> None:
@@ -269,14 +297,23 @@ class GravitypeApp(App):
     lives = reactive(3)
     category = reactive("tech")
     high_score = reactive(0)
+    words_cleared = reactive(0)
+    words_missed = reactive(0)
 
     def __init__(self, *args, **kwargs) -> None:
         # Dynamically compile the active theme before calling super()
         generate_theme_file(config.get("theme"))
         super().__init__(*args, **kwargs, watch_css=True)
+        self.game_started_at = None
+        self.starting_lives = config.get("starting_lives", 3)
+        self.last_game_stats = {}
+        self.last_game_was_high_score = False
+        self.game_recorded = False
 
     def on_mount(self) -> None:
-        self.high_score = config.get("high_score", 0)
+        stats = storage.get_stats()
+        self.high_score = max(config.get("high_score", 0), stats["high_score"])
+        config.set("high_score", self.high_score)
         self.lives = config.get("starting_lives", 3)
         self.push_screen("main")
 
@@ -286,7 +323,14 @@ class GravitypeApp(App):
     def start_new_game(self) -> None:
         self.score = 0
         self.level = 1
-        self.lives = config.get("starting_lives", 3)
+        self.starting_lives = config.get("starting_lives", 3)
+        self.lives = self.starting_lives
+        self.words_cleared = 0
+        self.words_missed = 0
+        self.game_started_at = datetime.now(timezone.utc)
+        self.last_game_stats = {}
+        self.last_game_was_high_score = False
+        self.game_recorded = False
         self.switch_screen("game")
         try:
             self.get_screen("game").reset_game_state()
@@ -294,10 +338,34 @@ class GravitypeApp(App):
             pass
 
     def end_game(self) -> None:
-        if self.score > self.high_score:
+        if not self.game_recorded:
+            ended_at = datetime.now(timezone.utc)
+            started_at = self.game_started_at or ended_at
+            duration_seconds = max(0, round((ended_at - started_at).total_seconds()))
+            self.last_game_stats = storage.append_game(
+                {
+                    "started_at": started_at.isoformat(),
+                    "ended_at": ended_at.isoformat(),
+                    "duration_seconds": duration_seconds,
+                    "category": self.category,
+                    "score": self.score,
+                    "level_reached": self.level,
+                    "starting_lives": self.starting_lives,
+                    "lives_remaining": self.lives,
+                    "words_cleared": self.words_cleared,
+                    "words_missed": self.words_missed,
+                }
+            )
+            self.game_recorded = True
+        self.last_game_was_high_score = self.score > self.high_score
+        if self.last_game_was_high_score:
             self.high_score = self.score
             config.set("high_score", self.high_score)
         self.switch_screen("game_over")
+
+    def format_duration(self, seconds: int) -> str:
+        minutes, remaining = divmod(max(0, int(seconds or 0)), 60)
+        return f"{minutes}:{remaining:02d}"
 
     def action_open_github(self) -> None:
         import webbrowser
