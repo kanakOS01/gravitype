@@ -16,7 +16,7 @@ GENERAL_KEYBINDS = [
 
 TYPING_KEYBINDS = [
     ("escape", "Pause / Resume Falling Game"),
-    ("ctrl+q", "Exit to Main Menu"),
+    ("ctrl+g", "Exit Game (not counted in high score)"),
     ("ctrl+w / ctrl+backspace", "Clear current input word"),
 ]
 
@@ -32,9 +32,8 @@ class AboutScreen(Widget):
             yield Static(
                 "Gravitype is a Terminal Typing Game where words fall from the sky. "
                 "Your objective is to type the words before they hit the bottom border!\n\n"
-                "Inspired by the smassh typing client, this game features dynamic "
-                "color themes, persistent high-scores, statistics, and a sleek keyboard layout.\n\n"
-                "Test your limits, avoid typographical errors, and set new high scores!",
+                "Thanks to the Smassh project for the color-theme ideas and implementation reference.\n\n"
+                "Test your limits, avoid typos and set new high scores!",
                 classes="about-text",
             )
             yield Label(

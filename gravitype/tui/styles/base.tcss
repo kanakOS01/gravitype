@@ -91,7 +91,6 @@ WelcomeScreen, GameOverScreen {
 /* Action Buttons */
 .action-btn {
     width: 20;
-    margin-top: 1;
     background: $bg-color;
     color: $main-color;
     border: tall $main-color;
@@ -105,7 +104,6 @@ WelcomeScreen, GameOverScreen {
 
 .danger-btn {
     width: 20;
-    margin-top: 1;
     background: $bg-color;
     color: $error-color;
     border: tall $error-color;
@@ -115,6 +113,40 @@ WelcomeScreen, GameOverScreen {
     background: $error-color;
     color: $bg-color;
     text-style: bold;
+}
+
+/* Centered row wrapper for action buttons (a plain child of a vertical
+   container does not center correctly once a preceding full-width sibling
+   is present, so button rows are always wrapped in one of these) */
+.action-row {
+    layout: horizontal;
+    width: 100%;
+    height: auto;
+    align: center middle;
+    margin-top: 1;
+}
+
+.action-row Button {
+    margin: 0 1;
+}
+
+/* Game Over stats grouping */
+.stats-panel {
+    width: 100%;
+    height: auto;
+    align: center middle;
+    background: $bg-color;
+    border: round $sub-alt-color;
+    padding: 1 2;
+    margin-bottom: 1;
+}
+
+.new-high-badge {
+    width: 100%;
+    content-align: center middle;
+    color: $error-extra-color;
+    text-style: bold;
+    margin-bottom: 1;
 }
 
 

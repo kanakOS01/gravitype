@@ -1,14 +1,14 @@
-/* Automatically generated active theme: catppuccin */
-$bg-color: #1e1e2e;
-$caret-color: #fae3b0;
-$main-color: #abe9b3;
-$sub-color: #575268;
-$sub-alt-color: #292739;
-$text-color: #d9e0ee;
-$error-color: #f28fad;
-$error-extra-color: #e8a2af;
-$colorful-error-color: #f28fad;
-$colorful-error-extra-color: #e8a2af;
+/* Automatically generated active theme: dracula */
+$bg-color: #282a36;
+$main-color: #bd93f9;
+$caret-color: #bd93f9;
+$sub-color: #6272a4;
+$sub-alt-color: #20222c;
+$text-color: #f8f8f2;
+$error-color: #ff5555;
+$error-extra-color: #f1fa8c;
+$colorful-error-color: #ff5555;
+$colorful-error-extra-color: #f1fa8c;
 
 /* Base TCSS layout for Gravitype */
 
@@ -103,7 +103,6 @@ WelcomeScreen, GameOverScreen {
 /* Action Buttons */
 .action-btn {
     width: 20;
-    margin-top: 1;
     background: $bg-color;
     color: $main-color;
     border: tall $main-color;
@@ -117,7 +116,6 @@ WelcomeScreen, GameOverScreen {
 
 .danger-btn {
     width: 20;
-    margin-top: 1;
     background: $bg-color;
     color: $error-color;
     border: tall $error-color;
@@ -127,6 +125,40 @@ WelcomeScreen, GameOverScreen {
     background: $error-color;
     color: $bg-color;
     text-style: bold;
+}
+
+/* Centered row wrapper for action buttons (a plain child of a vertical
+   container does not center correctly once a preceding full-width sibling
+   is present, so button rows are always wrapped in one of these) */
+.action-row {
+    layout: horizontal;
+    width: 100%;
+    height: auto;
+    align: center middle;
+    margin-top: 1;
+}
+
+.action-row Button {
+    margin: 0 1;
+}
+
+/* Game Over stats grouping */
+.stats-panel {
+    width: 100%;
+    height: auto;
+    align: center middle;
+    background: $bg-color;
+    border: round $sub-alt-color;
+    padding: 1 2;
+    margin-bottom: 1;
+}
+
+.new-high-badge {
+    width: 100%;
+    content-align: center middle;
+    color: $error-extra-color;
+    text-style: bold;
+    margin-bottom: 1;
 }
 
 

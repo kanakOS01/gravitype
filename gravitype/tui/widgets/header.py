@@ -13,13 +13,13 @@ class HeaderWidget(Widget):
 
     score = reactive(0)
     level = reactive(1)
-    category = reactive("mixed")
+    category = reactive("tech")
     lives = reactive(3)
     max_lives = reactive(3)
 
     def compose(self):
         self.score_label = Label(" SCORE: 00000", classes="header-score")
-        self.info_label = Label(" LVL 1 |  MIXED", classes="header-info")
+        self.info_label = Label(" LVL 1 |  TECH", classes="header-info")
         self.lives_label = Label("  ", classes="header-lives")
 
         yield self.score_label

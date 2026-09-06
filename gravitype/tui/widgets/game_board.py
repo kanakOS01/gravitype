@@ -53,7 +53,7 @@ class GameBoard(Widget):
 
     # Reactive inputs from active game state
     level = reactive(1)
-    category = reactive("mixed")
+    category = reactive("tech")
     is_paused = reactive(False)
 
     class WordMissed(Message):
@@ -85,22 +85,16 @@ class GameBoard(Widget):
     def get_ticks_for_level(self, level: int):
         """
         Returns (move_ticks, spawn_ticks)
-        Higher levels result in faster movement and quicker spawning.
+        Both intervals decay exponentially toward a floor as level increases,
+        so difficulty ramps up quickly at first and then eases off, instead of
+        climbing linearly and maxing out speed after only a few levels.
         """
-        # Base tick: 0.05s
-        if level == 1:
-            return 8, 40  # 0.40s move, 2.0s spawn
-        elif level == 2:
-            return 6, 30  # 0.30s move, 1.5s spawn
-        elif level == 3:
-            return 5, 24  # 0.25s move, 1.2s spawn
-        elif level == 4:
-            return 4, 18  # 0.20s move, 0.9s spawn
-        else:
-            # Level 5 and beyond scales speed and spawns gradually higher
-            move_ticks = max(2, 4 - (level - 4))
-            spawn_ticks = max(10, 18 - (level - 4) * 2)
-            return move_ticks, spawn_ticks
+        level = max(1, level)
+        decay = 0.85
+
+        move_ticks = max(2, round(2 + 6 * (decay ** (level - 1))))
+        spawn_ticks = max(10, round(10 + 30 * (decay ** (level - 1))))
+        return move_ticks, spawn_ticks
 
     def game_tick(self) -> None:
         if self.is_paused:

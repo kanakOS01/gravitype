@@ -215,11 +215,8 @@ GENERAL_WORDS = [
     "fountain",
 ]
 
-# Combine lists for mixed mode
-MIXED_WORDS = list(set(TECH_WORDS + GENERAL_WORDS))
 
-
-def get_random_word(category: str = "mixed", level: int = 1) -> str:
+def get_random_word(category: str = "tech", level: int = 1) -> str:
     """
     Get a random word from the specified category.
     Filters words by length based on the current level to increase difficulty:
@@ -229,12 +226,10 @@ def get_random_word(category: str = "mixed", level: int = 1) -> str:
     - Level 4+: 6+ letters
     """
     cat = category.lower()
-    if cat == "tech":
-        word_pool = TECH_WORDS
-    elif cat == "general":
+    if cat == "general":
         word_pool = GENERAL_WORDS
     else:
-        word_pool = MIXED_WORDS
+        word_pool = TECH_WORDS
 
     # Filter word pool by length corresponding to current level
     if level == 1:

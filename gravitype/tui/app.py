@@ -25,10 +25,10 @@ class WelcomeScreen(Widget):
             with Horizontal(id="category-container"):
                 yield Button("Tech", id="cat-tech", classes="category-btn active")
                 yield Button("General", id="cat-general", classes="category-btn")
-                yield Button("Mixed", id="cat-mixed", classes="category-btn")
 
             yield Label("", id="high-score-label", classes="label-info")
-            yield Button("START GAME", id="btn-start", classes="action-btn")
+            with Horizontal(classes="action-row"):
+                yield Button("START GAME", id="btn-start", classes="action-btn")
 
     def on_mount(self) -> None:
         # Sync initial state
@@ -59,20 +59,24 @@ class GameOverScreen(Screen):
             yield Label("GAME OVER", classes="game-over-title")
             yield Label(f"Score: {self.app.score:05d}", classes="subtitle")
 
-            is_new_high = self.app.score > self.app.high_score
+            is_new_high = self.app.is_new_high_score
             high_score_text = (
                 f"High Score: {max(self.app.score, self.app.high_score):05d}"
             )
-            if is_new_high:
-                high_score_text += " [NEW HIGH SCORE!]"
 
-            yield Label(high_score_text, classes="label-info")
-            yield Label(f"Level Reached: {self.app.level}", classes="label-info")
-            yield Label(f"Category: {self.app.category.upper()}", classes="label-info")
+            with Container(classes="stats-panel"):
+                if is_new_high:
+                    yield Label("★ NEW HIGH SCORE! ★", classes="new-high-badge")
+                yield Label(high_score_text, classes="label-info")
+                yield Label(f"Level Reached: {self.app.level}", classes="label-info")
+                yield Label(
+                    f"Category: {self.app.category.upper()}", classes="label-info"
+                )
 
-            yield Button("PLAY AGAIN", id="btn-retry", classes="action-btn")
-            yield Button("MAIN MENU", id="btn-menu", classes="action-btn")
-            yield Button("QUIT GAME", id="btn-quit", classes="danger-btn")
+            with Horizontal(classes="action-row"):
+                yield Button("PLAY AGAIN", id="btn-retry", classes="action-btn")
+                yield Button("MAIN MENU", id="btn-menu", classes="action-btn")
+                yield Button("QUIT GAME", id="btn-quit", classes="danger-btn")
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         button_id = event.button.id
@@ -90,7 +94,7 @@ class GameScreen(Screen):
 
     BINDINGS = [
         ("escape", "toggle_pause", "Pause/Resume Game"),
-        ("ctrl+q", "exit_to_menu", "Exit to Menu"),
+        ("ctrl+g", "exit_to_menu", "Exit Game"),
     ]
 
     def compose(self):
@@ -180,7 +184,7 @@ class GameScreen(Screen):
         input_widget = self.query_one("#word-input")
         if board.is_paused:
             input_widget.disabled = True
-            input_widget.placeholder = "PAUSED - ESC to Resume | Ctrl+Q to Exit"
+            input_widget.placeholder = "PAUSED - ESC to Resume | Ctrl+G to Exit"
             input_widget.value = ""
         else:
             input_widget.disabled = False
@@ -269,6 +273,7 @@ class GravitypeApp(App):
     lives = reactive(3)
     category = reactive("tech")
     high_score = reactive(0)
+    is_new_high_score = False
 
     def __init__(self, *args, **kwargs) -> None:
         # Dynamically compile the active theme before calling super()
@@ -294,7 +299,8 @@ class GravitypeApp(App):
             pass
 
     def end_game(self) -> None:
-        if self.score > self.high_score:
+        self.is_new_high_score = self.score > self.high_score
+        if self.is_new_high_score:
             self.high_score = self.score
             config.set("high_score", self.high_score)
         self.switch_screen("game_over")
