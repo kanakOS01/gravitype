@@ -211,3 +211,6 @@ __marimo__/
 
 .highscores.json
 .gravitype_config.json
+
+# Generated at runtime into the user cache dir; never committed
+gravitype/tui/styles/theme_active.tcss

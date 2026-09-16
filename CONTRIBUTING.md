@@ -26,7 +26,7 @@ uv run textual console                                  # terminal 1
 uv run textual run --dev gravitype.tui.app:GravitypeApp  # terminal 2
 ```
 
-`watch_css=True` is set on the app, so edits to `styles/theme_active.tcss` reload live. Edits to `base.tcss` or a theme file only take effect after a restart, since the active file is regenerated on startup.
+`watch_css=True` is set on the app and points at `~/.gravitype/theme_active.tcss`, so writing to that file reloads live. Edits to `base.tcss` or a theme file in the repo only take effect after a restart, since the active file is recompiled from them on startup.
 
 ## Code style
 
@@ -41,6 +41,7 @@ Beyond that, match what's already there:
 
 - Type hints on function signatures, docstrings on classes and non-obvious methods.
 - Widgets live in `gravitype/tui/widgets/`, one concern per module. Pure game logic (word selection, config) belongs in `gravitype/core/` and should not import Textual.
+- Never write to a path inside the installed package. Runtime state goes through `gravitype/core/paths.py`, which resolves `~/.gravitype/` (or `GRAVITYPE_HOME`) — site-packages may be read-only, and writing there leaks one user's state into everyone else's. Set `GRAVITYPE_HOME` when testing so you don't clobber your own save.
 - Cross-widget communication goes through Textual messages (see `GameBoard.WordMissed`) or app-level reactives — not by reaching into another widget's internals.
 - No `print()` in committed code.
 
@@ -71,7 +72,7 @@ There is no automated test suite yet. If you add one, `pytest` with tests under 
 
 **Adding a category** — extend the pools and the branch in `get_random_word`, then add a category button in `WelcomeScreen.compose` with id `cat-<name>`; the existing handler picks it up from the id.
 
-**Adding a theme** — copy an existing file in `gravitype/tui/styles/themes/`, keep the same variable names, and add an option to the theme `Select` in `gravitype/tui/widgets/screens.py`. Note that `theme_active.tcss` is generated output — don't put changes there, they'll be overwritten on next launch.
+**Adding a theme** — copy an existing file in `gravitype/tui/styles/themes/`, keep the same variable names, and add an option to the theme `Select` in `gravitype/tui/widgets/screens.py`. Note that `theme_active.tcss` is generated output living in `~/.gravitype/` — don't put changes there, they'll be overwritten on next launch.
 
 **Tuning difficulty** — `GameBoard.get_ticks_for_level` controls fall speed and spawn rate; the level threshold and per-word points live in `GameScreen.on_input_changed`.
 

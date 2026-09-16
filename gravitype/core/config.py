@@ -1,6 +1,13 @@
 import json
 from pathlib import Path
 
+from gravitype.core.paths import (
+    config_file,
+    ensure_writable_dir,
+    generated_css_file,
+    legacy_config_file,
+)
+
 DEFAULT_CONFIG = {
     "high_score": 0,
     "theme": "dracula",
@@ -9,36 +16,60 @@ DEFAULT_CONFIG = {
 }
 
 
+def _coerce(key, value):
+    """Cast a loaded value to the type of its default."""
+    if isinstance(DEFAULT_CONFIG[key], bool):
+        return bool(value)
+    if isinstance(DEFAULT_CONFIG[key], int):
+        return int(value)
+    return str(value)
+
+
 class Config:
     def __init__(self):
-        self.config_path = Path(".gravitype_config.json")
+        self.config_path = config_file()
         self.config = DEFAULT_CONFIG.copy()
         self.load()
 
     def load(self):
-        if self.config_path.exists():
-            try:
-                with open(self.config_path, "r") as f:
-                    user_data = json.load(f)
-                    for k, v in user_data.items():
-                        if k in DEFAULT_CONFIG:
-                            # Safely cast to expected type
-                            if isinstance(DEFAULT_CONFIG[k], bool):
-                                self.config[k] = bool(v)
-                            elif isinstance(DEFAULT_CONFIG[k], int):
-                                self.config[k] = int(v)
-                            else:
-                                self.config[k] = str(v)
-            except Exception:
-                self.config = DEFAULT_CONFIG.copy()
-        else:
+        source = self.config_path
+        if not source.exists():
+            # Fall back to the pre-0.3 dotfile so upgrading keeps your
+            # high score and settings instead of silently resetting them.
+            legacy = legacy_config_file()
+            source = legacy if legacy.exists() else None
+
+        if source is None:
+            self.save()
+            return
+
+        try:
+            with open(source, "r") as f:
+                user_data = json.load(f)
+        except (OSError, ValueError):
+            self.config = DEFAULT_CONFIG.copy()
+            return
+
+        for k, v in user_data.items():
+            if k in DEFAULT_CONFIG:
+                try:
+                    self.config[k] = _coerce(k, v)
+                except (TypeError, ValueError):
+                    pass
+
+        if source != self.config_path:
+            # Migrate the legacy file forward. The original is left in
+            # place so a downgrade still finds it.
             self.save()
 
     def save(self):
         try:
-            with open(self.config_path, "w") as f:
+            path = ensure_writable_dir(self.config_path)
+            self.config_path = path
+            with open(path, "w") as f:
                 json.dump(self.config, f, indent=4)
-        except Exception:
+        except OSError:
+            # Persistence is best-effort; the game stays playable without it.
             pass
 
     def get(self, key, default=None):
@@ -48,49 +79,40 @@ class Config:
 
     def set(self, key, value):
         if key in DEFAULT_CONFIG:
-            if isinstance(DEFAULT_CONFIG[key], bool):
-                self.config[key] = bool(value)
-            elif isinstance(DEFAULT_CONFIG[key], int):
-                self.config[key] = int(value)
-            else:
-                self.config[key] = str(value)
+            try:
+                self.config[key] = _coerce(key, value)
+            except (TypeError, ValueError):
+                return
             self.save()
 
 
 config = Config()
 
 
-def generate_theme_file(theme_name: str) -> None:
+def generate_theme_file(theme_name: str) -> Path:
+    """Compile the selected theme plus the base styles into one stylesheet.
+
+    Written outside the package so an installed, read-only copy still works.
+    Returns the path written, which the app passes to Textual as its CSS.
     """
-    Combines the selected theme variables and base styles into theme_active.tcss
-    """
-    pkg_dir = Path(__file__).parent.parent
-    themes_dir = pkg_dir / "tui" / "styles" / "themes"
+    styles_dir = Path(__file__).parent.parent / "tui" / "styles"
+    themes_dir = styles_dir / "themes"
+
     theme_path = themes_dir / f"{theme_name}.tcss"
-
     if not theme_path.exists():
-        theme_path = themes_dir / "dracula.tcss"
         theme_name = "dracula"
+        theme_path = themes_dir / "dracula.tcss"
 
-    base_path = pkg_dir / "tui" / "styles" / "base.tcss"
-    active_path = pkg_dir / "tui" / "styles" / "theme_active.tcss"
+    base_path = styles_dir / "base.tcss"
+    active_path = ensure_writable_dir(generated_css_file())
 
-    try:
-        theme_css = ""
-        if theme_path.exists():
-            with open(theme_path, "r") as f:
-                theme_css = f.read()
+    theme_css = theme_path.read_text() if theme_path.exists() else ""
+    base_css = base_path.read_text() if base_path.exists() else ""
 
-        base_css = ""
-        if base_path.exists():
-            with open(base_path, "r") as f:
-                base_css = f.read()
+    with open(active_path, "w") as f:
+        f.write(f"/* Automatically generated active theme: {theme_name} */\n")
+        f.write(theme_css)
+        f.write("\n")
+        f.write(base_css)
 
-        active_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(active_path, "w") as f:
-            f.write(f"/* Automatically generated active theme: {theme_name} */\n")
-            f.write(theme_css)
-            f.write("\n")
-            f.write(base_css)
-    except Exception:
-        pass
+    return active_path

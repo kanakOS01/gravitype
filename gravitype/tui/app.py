@@ -260,7 +260,6 @@ class GravitypeApp(App):
     """Main Textual App orchestrating user state, menus, and file state."""
 
     ENABLE_COMMAND_PALETTE = False
-    CSS_PATH = "styles/theme_active.tcss"
 
     SCREENS = {
         "main": MainScreen,
@@ -276,9 +275,10 @@ class GravitypeApp(App):
     is_new_high_score = False
 
     def __init__(self, *args, **kwargs) -> None:
-        # Dynamically compile the active theme before calling super()
-        generate_theme_file(config.get("theme"))
-        super().__init__(*args, **kwargs, watch_css=True)
+        # Compile the active theme to a writable location, then hand the
+        # generated file to Textual as this app's stylesheet.
+        css_path = generate_theme_file(config.get("theme"))
+        super().__init__(*args, **kwargs, css_path=css_path, watch_css=True)
 
     def on_mount(self) -> None:
         self.high_score = config.get("high_score", 0)
