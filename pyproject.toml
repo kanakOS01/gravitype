@@ -1,12 +1,15 @@
 [project]
 name = "gravitype"
-version = "0.1.0"
+version = "0.3.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.9"
 dependencies = [
     "textual>=8.2.7",
 ]
+
+[project.scripts]
+gravitype = "gravitype.cli:main"
 
 [build-system]
 requires = ["hatchling"]
@@ -18,7 +21,6 @@ packages = ["gravitype"]
 [tool.hatch.build.targets.sdist]
 include = [
     "gravitype/",
-    "main.py",
     "README.md",
     "CONTRIBUTING.md",
     "LICENSE",

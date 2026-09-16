@@ -24,28 +24,38 @@ Built with [Textual](https://textual.textualize.io/).
 
 ## Requirements
 
-- Python 3.9+ (developed on 3.12)
-- [uv](https://docs.astral.sh/uv/) — recommended, but plain `pip` works too
+Python 3.9+ (developed on 3.12). Any terminal with 256-colour support.
 
-## Install & run
+## Install
 
-With uv:
+The quickest way, which puts `gravitype` on your PATH in an isolated environment:
+
+```bash
+uv tool install gravitype
+```
+
+Or with pipx, or plain pip:
+
+```bash
+pipx install gravitype
+pip install gravitype
+```
+
+Then launch it:
+
+```bash
+gravitype
+```
+
+`python -m gravitype` works too, if you'd rather not rely on the script being on your PATH.
+
+### Running from source
 
 ```bash
 git clone https://github.com/kanakOS01/gravitype.git
 cd gravitype
 uv sync
-uv run main.py
-```
-
-With pip:
-
-```bash
-git clone https://github.com/kanakOS01/gravitype.git
-cd gravitype
-python -m venv .venv && source .venv/bin/activate
-pip install "textual>=8.2.7"
-python main.py
+uv run gravitype
 ```
 
 ## How to play
@@ -94,8 +104,9 @@ Unknown keys are ignored and a corrupt file falls back to defaults, so it is saf
 ## Project layout
 
 ```
-main.py                      entry point
 gravitype/
+  cli.py                     console entry point
+  __main__.py                enables `python -m gravitype`
   core/
     config.py                config load/save + theme compilation
     words.py                 word pools and level-based word picking

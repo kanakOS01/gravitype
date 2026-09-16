@@ -16,14 +16,14 @@ Both hook types matter: `pre-commit` runs Ruff, `commit-msg` runs Commitizen on 
 Run the game:
 
 ```bash
-uv run main.py
+uv run gravitype
 ```
 
 For development, run it under the Textual dev console so `print()` and tracebacks are visible instead of being swallowed by the TUI:
 
 ```bash
-uv run textual console          # terminal 1
-uv run textual run --dev main.py  # terminal 2
+uv run textual console                                  # terminal 1
+uv run textual run --dev gravitype.tui.app:GravitypeApp  # terminal 2
 ```
 
 `watch_css=True` is set on the app, so edits to `styles/theme_active.tcss` reload live. Edits to `base.tcss` or a theme file only take effect after a restart, since the active file is regenerated on startup.
