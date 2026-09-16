@@ -13,20 +13,17 @@ Built with [Textual](https://textual.textualize.io/).
  ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝  ╚═══╝  ╚═╝   ╚═╝      ╚═╝   ╚═╝     ╚══════╝
 ```
 
-## Features
-
-- Falling-word gameplay with difficulty that ramps up as you score
-- Two word categories: **Tech** and **General**
-- 7 colour themes (Dracula, Nord, Tokyo Night, Gruvbox, Catppuccin, Cyberspace, 80s After Dark)
-- Configurable starting lives (3 / 5 / 8) and bell-on-miss sound
-- Persistent high score
-- Pause, in-game help and keybind reference
+[![PyPI](https://img.shields.io/pypi/v/gravitype.svg)](https://pypi.org/project/gravitype/)
+[![Python versions](https://img.shields.io/pypi/pyversions/gravitype.svg)](https://pypi.org/project/gravitype/)
+[![License](https://img.shields.io/pypi/l/gravitype.svg)](LICENSE)
 
 ## Requirements
 
 Python 3.9+ (developed on 3.12). Any terminal with 256-colour support.
 
 ## Install
+
+Gravitype is on PyPI: **[pypi.org/project/gravitype](https://pypi.org/project/gravitype/)**
 
 The quickest way, which puts `gravitype` on your PATH in an isolated environment:
 
@@ -57,6 +54,15 @@ cd gravitype
 uv sync
 uv run gravitype
 ```
+
+## Features
+
+- Falling-word gameplay with difficulty that ramps up as you score
+- Two word categories: **Tech** and **General**
+- 7 colour themes (Dracula, Nord, Tokyo Night, Gruvbox, Catppuccin, Cyberspace, 80s After Dark)
+- Configurable starting lives (3 / 5 / 8) and bell-on-miss sound
+- Persistent high score
+- Pause, in-game help and keybind reference
 
 ## How to play
 
