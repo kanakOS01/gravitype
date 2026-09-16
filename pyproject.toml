@@ -1,18 +1,50 @@
 [project]
 name = "gravitype"
-version = "0.3.0"
-description = "Add your description here"
+version = "1.0.0"
+description = "A terminal typing game where the words fall from the sky"
 readme = "README.md"
 requires-python = ">=3.9"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Kanak Tanwar" }]
+keywords = [
+    "typing",
+    "typing-game",
+    "game",
+    "terminal",
+    "tui",
+    "textual",
+    "cli",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: End Users/Desktop",
+    "Natural Language :: English",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Games/Entertainment",
+    "Topic :: Terminals",
+]
 dependencies = [
     "textual>=8.2.7",
 ]
+
+[project.urls]
+Homepage = "https://github.com/kanakOS01/gravitype"
+Repository = "https://github.com/kanakOS01/gravitype"
+Issues = "https://github.com/kanakOS01/gravitype/issues"
 
 [project.scripts]
 gravitype = "gravitype.cli:main"
 
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling>=1.27,<1.28"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
