@@ -76,6 +76,10 @@ There is no automated test suite yet. If you add one, `pytest` with tests under 
 
 **Tuning difficulty** — `GameBoard.get_ticks_for_level` controls fall speed and spawn rate; the level threshold and per-word points live in `GameScreen.on_input_changed`.
 
+## Releasing
+
+Maintainers only — see [RELEASING.md](RELEASING.md) for the full checklist.
+
 ## Reporting bugs
 
 Open an issue with your OS and terminal, Python version, what you did, what you expected, and what happened. Terminal size matters for TUI layout bugs, so include it if the issue looks like a rendering problem.
