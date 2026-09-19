@@ -31,6 +31,16 @@ The quickest way, which puts `gravitype` on your PATH in an isolated environment
 uv tool install gravitype
 ```
 
+Or let a script work out the details for you:
+
+```bash
+curl -LsSf https://raw.githubusercontent.com/kanakOS01/gravitype/main/install.sh | sh
+```
+
+That installs uv if you don't have it, then installs Gravitype with it. Piping a script
+into a shell runs whatever that URL serves, so if you'd rather not, every command below
+does the same job by hand — [read the script first](install.sh) if you want to check.
+
 Or with pipx, or plain pip:
 
 ```bash
