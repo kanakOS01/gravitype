@@ -76,6 +76,30 @@ There is no automated test suite yet. If you add one, `pytest` with tests under 
 
 **Tuning difficulty** — `GameBoard.get_ticks_for_level` controls fall speed and spawn rate; the level threshold and per-word points live in `GameScreen.on_input_changed`.
 
+## Recording demos
+
+The GIFs in the README are recorded with [asciinema](https://asciinema.org/) and
+converted with [agg](https://github.com/asciinema/agg):
+
+```bash
+brew install asciinema agg
+```
+
+Record a session, play through the beats, then stop with `Ctrl+D`:
+
+```bash
+export GRAVITYPE_SEED=7 GRAVITYPE_HOME=$(mktemp -d)
+asciinema rec docs/demo.cast --overwrite
+gravitype
+```
+
+Convert it to a GIF:
+
+```bash
+agg docs/demo.cast docs/demo.gif --font-size 18 --theme dracula
+```
+
+
 ## Releasing
 
 Maintainers only — see [RELEASING.md](RELEASING.md) for the full checklist.

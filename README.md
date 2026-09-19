@@ -17,6 +17,8 @@ Built with [Textual](https://textual.textualize.io/).
 [![Python versions](https://img.shields.io/pypi/pyversions/gravitype.svg)](https://pypi.org/project/gravitype/)
 [![License](https://img.shields.io/pypi/l/gravitype.svg)](LICENSE)
 
+![Gravitype gameplay](https://raw.githubusercontent.com/kanakOS01/gravitype/main/docs/demo.gif)
+
 ## Requirements
 
 Python 3.9+ (developed on 3.12). Any terminal with 256-colour support.

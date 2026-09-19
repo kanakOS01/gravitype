@@ -214,3 +214,6 @@ __marimo__/
 
 # Generated at runtime into the user cache dir; never committed
 gravitype/tui/styles/theme_active.tcss
+
+# macOS
+.DS_Store
