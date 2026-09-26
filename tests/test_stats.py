@@ -100,12 +100,10 @@ def test_unknown_category_is_created_on_demand(isolated_home):
     s.record_game_finished("haskell", level=2, seconds=8.0, completed=True)
 
     entry = s.snapshot()["categories"]["haskell"]
-    assert entry == {
-        "games_started": 1,
-        "games_completed": 1,
-        "total_play_seconds": 8.0,
-        "max_level": 2,
-    }
+    assert entry["games_started"] == 1
+    assert entry["games_completed"] == 1
+    assert entry["total_play_seconds"] == 8.0
+    assert entry["max_level"] == 2
 
 
 def test_category_matching_is_case_insensitive(isolated_home):
@@ -193,12 +191,13 @@ def test_hand_edited_file_is_sanitised(isolated_home):
     # A null category is skipped, leaving the seeded default in place.
     assert snap["categories"]["tech"]["max_level"] == 0
     # A partial category is filled out with defaults.
-    assert snap["categories"]["custom"] == {
-        "games_started": 0,
-        "games_completed": 0,
-        "total_play_seconds": 0.0,
-        "max_level": 2,
-    }
+    custom = snap["categories"]["custom"]
+    assert custom["max_level"] == 2
+    assert custom["games_started"] == 0
+    assert custom["games_completed"] == 0
+    assert custom["total_play_seconds"] == 0.0
+    assert custom["words_hit"] == 0
+    assert custom["best_wpm"] == 0.0
 
 
 def test_recording_still_works_when_the_home_is_read_only(isolated_home):
@@ -233,3 +232,156 @@ def test_recording_still_works_when_the_home_is_read_only(isolated_home):
 )
 def test_format_duration(seconds, expected):
     assert format_duration(seconds) == expected
+
+
+# --- schema v2: typing figures ---
+
+
+def _session(words_and_times, errors=0):
+    """A RunSession driven by a fake clock, for feeding into Stats."""
+    from gravitype.core.session import RunSession
+
+    now = [0.0]
+    session = RunSession(clock=lambda: now[0])
+    for word, seconds in words_and_times:
+        session.start_word()
+        for index, _ in enumerate(word):
+            session.record_keystroke(index >= errors)
+        now[0] += seconds
+        session.record_hit(word)
+    return session
+
+
+def test_typing_figures_are_recorded(isolated_home):
+    s = Stats()
+    s.record_game_finished(
+        "tech",
+        level=5,
+        seconds=10.0,
+        completed=True,
+        session=_session([("python", 1.0), ("python", 0.5)]),
+    )
+
+    snap = s.snapshot()
+    assert snap["words_hit"] == 2
+    assert snap["wpm_samples"] == 2
+    assert snap["avg_wpm"] == pytest.approx(108.0)
+    assert snap["accuracy"] == 1.0
+
+
+def test_best_wpm_is_the_best_run_not_the_best_word(isolated_home):
+    """One lucky short word should not become a personal best."""
+    s = Stats()
+    # A run averaging 108, containing a single 144 burst.
+    s.record_game_finished(
+        "tech", 1, 1.0, True, _session([("python", 1.0), ("python", 0.5)])
+    )
+
+    assert s.snapshot()["best_wpm"] == pytest.approx(108.0)
+
+
+def test_best_wpm_is_a_high_water_mark(isolated_home):
+    s = Stats()
+    s.record_game_finished("tech", 1, 1.0, True, _session([("python", 0.5)]))
+    s.record_game_finished("tech", 1, 1.0, True, _session([("python", 2.0)]))
+
+    assert s.snapshot()["best_wpm"] == pytest.approx(144.0)
+
+
+def test_average_wpm_is_weighted_per_word_not_per_run(isolated_home):
+    """A one-word run must not sway the average as much as a long one."""
+    s = Stats()
+    s.record_game_finished("tech", 1, 1.0, True, _session([("python", 1.0)] * 9))
+    s.record_game_finished("tech", 1, 1.0, True, _session([("python", 0.5)]))
+
+    # Nine samples at 72 and one at 144 -> 79.2, not the 108 a mean of the
+    # two run averages would give.
+    assert s.snapshot()["avg_wpm"] == pytest.approx(79.2)
+
+
+def test_accuracy_accumulates_across_runs(isolated_home):
+    s = Stats()
+    s.record_game_finished("tech", 1, 1.0, True, _session([("rust", 1.0)], errors=1))
+    s.record_game_finished("tech", 1, 1.0, True, _session([("rust", 1.0)]))
+
+    assert s.snapshot()["accuracy"] == pytest.approx(7 / 8)
+
+
+def test_typing_figures_are_tracked_per_category(isolated_home):
+    s = Stats()
+    s.record_game_finished("tech", 1, 1.0, True, _session([("python", 1.0)]))
+    s.record_game_finished("general", 1, 1.0, True, _session([("python", 0.5)]))
+
+    snap = s.snapshot()
+    assert snap["categories"]["tech"]["best_wpm"] == pytest.approx(72.0)
+    assert snap["categories"]["general"]["best_wpm"] == pytest.approx(144.0)
+    assert snap["categories"]["tech"]["words_hit"] == 1
+
+
+def test_a_run_with_no_words_leaves_the_figures_alone(isolated_home):
+    s = Stats()
+    s.record_game_finished("tech", 1, 1.0, True, _session([]))
+
+    snap = s.snapshot()
+    assert snap["best_wpm"] == 0.0
+    assert snap["avg_wpm"] is None
+    assert snap["accuracy"] is None
+
+
+def test_session_is_optional(isolated_home):
+    """Recording without typing data must still count the run."""
+    s = Stats()
+    s.record_game_finished("tech", level=3, seconds=5.0, completed=True)
+
+    snap = s.snapshot()
+    assert snap["games_completed"] == 1
+    assert snap["words_hit"] == 0
+
+
+def test_a_v1_file_upgrades_without_losing_anything(isolated_home):
+    """The shipped v1 schema had no typing fields; they default to zero."""
+    stats_file().parent.mkdir(parents=True, exist_ok=True)
+    stats_file().write_text(
+        json.dumps(
+            {
+                "version": 1,
+                "games_started": 7,
+                "games_completed": 4,
+                "total_play_seconds": 900.0,
+                "max_level": 11,
+                "categories": {
+                    "tech": {
+                        "games_started": 7,
+                        "games_completed": 4,
+                        "total_play_seconds": 900.0,
+                        "max_level": 11,
+                    }
+                },
+            }
+        )
+    )
+
+    snap = Stats().snapshot()
+
+    # Everything from v1 survives...
+    assert snap["games_started"] == 7
+    assert snap["games_completed"] == 4
+    assert snap["max_level"] == 11
+    assert snap["total_play_seconds"] == 900.0
+    assert snap["categories"]["tech"]["max_level"] == 11
+    # ...and the new fields start empty rather than absent.
+    assert snap["best_wpm"] == 0.0
+    assert snap["avg_wpm"] is None
+    assert snap["accuracy"] is None
+    assert snap["words_hit"] == 0
+
+
+def test_a_v1_file_is_rewritten_as_v2(isolated_home):
+    stats_file().parent.mkdir(parents=True, exist_ok=True)
+    stats_file().write_text(json.dumps({"version": 1, "games_started": 2}))
+
+    s = Stats()
+    s.record_game_started("tech")
+
+    assert json.loads(stats_file().read_text())["version"] == 2
+    assert s.snapshot()["games_started"] == 3

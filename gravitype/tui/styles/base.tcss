@@ -410,6 +410,81 @@ SelectOverlay {
     background: $bg-color;
 }
 
+/* Results screen (post-game) */
+.result-body {
+    width: 100%;
+    height: auto;
+    margin-bottom: 1;
+}
+
+.result-metrics {
+    width: 16;
+    height: auto;
+}
+
+BigNumber {
+    width: 100%;
+    height: auto;
+    margin-bottom: 1;
+}
+
+BigNumber > .bignumber--label {
+    color: $sub-color;
+}
+
+BigNumber > .bignumber--value {
+    color: $main-color;
+    text-style: bold;
+}
+
+#result-acc > .bignumber--value {
+    color: $text-color;
+}
+
+BrailleChart {
+    width: 1fr;
+    height: auto;
+}
+
+BrailleChart > .braillechart--line {
+    color: $main-color;
+}
+
+BrailleChart > .braillechart--marker {
+    color: $error-color;
+    text-style: bold;
+}
+
+BrailleChart > .braillechart--axis {
+    color: $sub-color;
+}
+
+BrailleChart > .braillechart--label {
+    color: $sub-color;
+}
+
+.result-row {
+    width: 100%;
+    height: auto;
+    margin-bottom: 1;
+}
+
+.result-field {
+    width: 1fr;
+    height: auto;
+}
+
+.result-field-label {
+    width: 100%;
+    color: $sub-color;
+}
+
+.result-field-value {
+    width: 100%;
+    color: $text-color;
+    text-style: bold;
+}
+
 /* Help keybind table styling */
 Table {
     height: auto;

@@ -4,6 +4,7 @@ from textual.containers import Container, Horizontal
 from textual.widget import Widget
 from textual.widgets import Label, Static, Select
 from gravitype.core.config import config, generate_theme_file
+from gravitype.core.session import format_percent, format_wpm
 from gravitype.core.stats import format_duration, stats
 from gravitype.tui.widgets.table import Table
 
@@ -74,7 +75,7 @@ class StatsScreen(Widget):
                 id="stats-lifetime",
             )
             yield Table(
-                "By Category  (max level · completed/started · time)",
+                "By Category  (level · done/started · wpm · acc · time)",
                 title_prefix=self.TITLE_PREFIX,
                 key_ratio=2,
                 id="stats-categories",
@@ -91,6 +92,11 @@ class StatsScreen(Widget):
             ("Games Started", str(data["games_started"])),
             ("Games Completed", str(data["games_completed"])),
             ("Max Level Reached", str(data["max_level"])),
+            # A stored best of 0.0 means "never set", not "zero words a minute".
+            ("Best WPM", format_wpm(data["best_wpm"] or None)),
+            ("Average WPM", format_wpm(data["avg_wpm"])),
+            ("Accuracy", format_percent(data["accuracy"])),
+            ("Words Typed", str(data["words_hit"])),
             ("Total Time Played", format_duration(data["total_play_seconds"])),
         ]
 
@@ -103,6 +109,8 @@ class StatsScreen(Widget):
                     # row short enough not to wrap on a narrow terminal.
                     f"lvl {values['max_level']} \u00b7 "
                     f"{values['games_completed']}/{values['games_started']} \u00b7 "
+                    f"{format_wpm(values['best_wpm'] or None)} \u00b7 "
+                    f"{format_percent(values['accuracy'])} \u00b7 "
                     f"{format_duration(values['total_play_seconds'])}",
                 )
             )

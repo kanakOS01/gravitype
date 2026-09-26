@@ -74,7 +74,8 @@ uv run gravitype
 - 7 colour themes (Dracula, Nord, Tokyo Night, Gruvbox, Catppuccin, Cyberspace, 80s After Dark)
 - Configurable starting lives (3 / 5 / 8) and bell-on-miss sound
 - Persistent high score
-- Lifetime stats: max level (overall and per category), games started, games completed and total time played
+- Post-game results screen: WPM, accuracy and a chart of your speed across the run
+- Lifetime stats: best and average WPM, accuracy, max level (overall and per category), games started, games completed and total time played
 - Pause, in-game help and keybind reference
 
 ## How to play
@@ -82,6 +83,10 @@ uv run gravitype
 Words spawn at the top of the board and drift down. Type a word and it disappears the moment the text matches — no Enter needed. Points are `10 × word length`, and every 150 points bumps you up a level, which makes words fall faster, spawn more often and get longer.
 
 If a word reaches the bottom you lose a life. At zero lives the run ends and your score is checked against the high score.
+
+When a run ends you get a results screen: your **WPM**, your **accuracy**, and a chart of how fast you typed each word, with a red × on the words you fumbled.
+
+WPM is measured per word — the clock runs from the first keystroke of a word to the moment it matches, so the time you spend waiting for the next word to spawn isn't counted against you. A plain session average would mostly just tell you which level you reached, because the spawn rate caps how much there is to type. Accuracy is the share of keystrokes that kept what you'd typed a valid start of some word on screen; backspacing to fix a mistake doesn't count against you, but the wrong keystroke already did.
 
 Every run is recorded on the **Stats** page (`ctrl+t`). A run counts as *completed* only if you played it out to GAME OVER — leaving with `ctrl+g` or quitting mid-run counts as started but not completed, though the level you reached and the time you played still count. Paused time is not counted as play time.
 
@@ -115,7 +120,7 @@ Settings are edited in-game (`ctrl+s`) and stored in `~/.gravitype/`, so your hi
 ```
 ~/.gravitype/
   config.json            your settings and high score
-  stats.json             your lifetime play stats
+  stats.json             your lifetime play and typing stats
   theme_active.tcss      generated stylesheet, safe to delete
 ```
 
