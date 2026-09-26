@@ -74,6 +74,7 @@ uv run gravitype
 - 7 colour themes (Dracula, Nord, Tokyo Night, Gruvbox, Catppuccin, Cyberspace, 80s After Dark)
 - Configurable starting lives (3 / 5 / 8) and bell-on-miss sound
 - Persistent high score
+- Lifetime stats: max level (overall and per category), games started, games completed and total time played
 - Pause, in-game help and keybind reference
 
 ## How to play
@@ -81,6 +82,8 @@ uv run gravitype
 Words spawn at the top of the board and drift down. Type a word and it disappears the moment the text matches — no Enter needed. Points are `10 × word length`, and every 150 points bumps you up a level, which makes words fall faster, spawn more often and get longer.
 
 If a word reaches the bottom you lose a life. At zero lives the run ends and your score is checked against the high score.
+
+Every run is recorded on the **Stats** page (`ctrl+t`). A run counts as *completed* only if you played it out to GAME OVER — leaving with `ctrl+g` or quitting mid-run counts as started but not completed, though the level you reached and the time you played still count. Paused time is not counted as play time.
 
 The input box flashes on a hit, and turns red the moment what you have typed is no longer the prefix of any word on screen.
 
@@ -94,6 +97,7 @@ The input box flashes on a hit, and turns red the moment what you have typed is 
 | `ctrl+s` | Settings |
 | `ctrl+h` | Help |
 | `ctrl+a` | About |
+| `ctrl+t` | Stats |
 | `ctrl+q` | Quit |
 
 **In game**
@@ -111,6 +115,7 @@ Settings are edited in-game (`ctrl+s`) and stored in `~/.gravitype/`, so your hi
 ```
 ~/.gravitype/
   config.json            your settings and high score
+  stats.json             your lifetime play stats
   theme_active.tcss      generated stylesheet, safe to delete
 ```
 

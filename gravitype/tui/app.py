@@ -1,3 +1,5 @@
+import time
+
 from textual import on
 from textual.app import App
 from textual.screen import Screen
@@ -7,10 +9,16 @@ from textual.containers import Container, Horizontal
 from textual.reactive import reactive
 
 from gravitype.core.config import config, generate_theme_file
+from gravitype.core.stats import stats
 from gravitype.tui.widgets.header import HeaderWidget
 from gravitype.tui.widgets.game_board import GameBoard
 from gravitype.tui.widgets.main_header import MainHeader, NavItem, Banner
-from gravitype.tui.widgets.screens import AboutScreen, HelpScreen, SettingsScreen
+from gravitype.tui.widgets.screens import (
+    AboutScreen,
+    HelpScreen,
+    SettingsScreen,
+    StatsScreen,
+)
 
 
 # --- Welcome/Start Menu Screen Widget ---
@@ -180,6 +188,8 @@ class GameScreen(Screen):
     def action_toggle_pause(self) -> None:
         board = self.query_one(GameBoard)
         board.is_paused = not board.is_paused
+        # Paused seconds are not play time, so stop the clock while we wait.
+        self.app.set_run_paused(board.is_paused)
 
         input_widget = self.query_one("#word-input")
         if board.is_paused:
@@ -204,6 +214,7 @@ class MainScreen(Screen):
         ("ctrl+s", "switch_settings", "Settings"),
         ("ctrl+h", "switch_help", "Help"),
         ("ctrl+a", "switch_about", "About"),
+        ("ctrl+t", "switch_stats", "Stats"),
         ("escape", "switch_play", "Play"),
         ("ctrl+p", "switch_play", "Play"),
     ]
@@ -212,6 +223,7 @@ class MainScreen(Screen):
         yield MainHeader()
         yield ContentSwitcher(
             WelcomeScreen(id="welcome"),
+            StatsScreen(id="stats"),
             SettingsScreen(id="settings"),
             HelpScreen(id="help"),
             AboutScreen(id="about"),
@@ -234,6 +246,9 @@ class MainScreen(Screen):
     def action_switch_about(self) -> None:
         self.switch_to_screen("about")
 
+    def action_switch_stats(self) -> None:
+        self.switch_to_screen("stats")
+
     def action_switch_play(self) -> None:
         self.switch_to_screen("welcome")
 
@@ -244,6 +259,9 @@ class MainScreen(Screen):
         if screen_name == "welcome":
             welcome_screen = self.query_one(WelcomeScreen)
             welcome_screen.update_high_score()
+        elif screen_name == "stats":
+            # Re-read from disk so a run that just ended is reflected.
+            self.query_one(StatsScreen).sync_stats()
 
     @on(Button.Pressed)
     def handle_nav_button(self, event: Button.Pressed) -> None:
@@ -275,6 +293,11 @@ class GravitypeApp(App):
     is_new_high_score = False
 
     def __init__(self, *args, **kwargs) -> None:
+        # Per-run bookkeeping for the stats page. Plain attributes, not
+        # reactives - nothing renders them mid-game.
+        self._run_started_at = None
+        self._run_active_seconds = 0.0
+        self._run_recorded = True
         # Compile the active theme to a writable location, then hand the
         # generated file to Textual as this app's stylesheet.
         css_path = generate_theme_file(config.get("theme"))
@@ -285,13 +308,53 @@ class GravitypeApp(App):
         self.lives = config.get("starting_lives", 3)
         self.push_screen("main")
 
+    def set_run_paused(self, paused: bool) -> None:
+        """Stop or restart the play clock around a pause."""
+        if self._run_recorded:
+            return
+        if paused:
+            self._bank_elapsed()
+        elif self._run_started_at is None:
+            self._run_started_at = time.monotonic()
+
+    def _bank_elapsed(self) -> None:
+        """Fold any in-flight elapsed time into the run total."""
+        if self._run_started_at is not None:
+            self._run_active_seconds += time.monotonic() - self._run_started_at
+            self._run_started_at = None
+
+    def _finish_run(self, completed: bool) -> None:
+        """Record the current run, once.
+
+        Several paths end a run - game over, ctrl+g, PLAY AGAIN, quitting the
+        app - so this is idempotent and they can all call it freely.
+        """
+        if self._run_recorded:
+            return
+        self._run_recorded = True
+        self._bank_elapsed()
+        stats.record_game_finished(
+            self.category, self.level, self._run_active_seconds, completed
+        )
+
     def show_menu(self) -> None:
+        # Leaving the board mid-run counts as started but not completed.
+        self._finish_run(completed=False)
         self.switch_screen("main")
 
     def start_new_game(self) -> None:
+        # Close out a run still in progress (PLAY AGAIN takes this path).
+        self._finish_run(completed=False)
+
         self.score = 0
         self.level = 1
         self.lives = config.get("starting_lives", 3)
+
+        self._run_active_seconds = 0.0
+        self._run_started_at = time.monotonic()
+        self._run_recorded = False
+        stats.record_game_started(self.category)
+
         self.switch_screen("game")
         try:
             self.get_screen("game").reset_game_state()
@@ -299,11 +362,16 @@ class GravitypeApp(App):
             pass
 
     def end_game(self) -> None:
+        self._finish_run(completed=True)
         self.is_new_high_score = self.score > self.high_score
         if self.is_new_high_score:
             self.high_score = self.score
             config.set("high_score", self.high_score)
         self.switch_screen("game_over")
+
+    def on_unmount(self) -> None:
+        # Quitting mid-run still counts the time and level played.
+        self._finish_run(completed=False)
 
     def action_open_github(self) -> None:
         import webbrowser
