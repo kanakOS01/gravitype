@@ -45,6 +45,32 @@ Beyond that, match what's already there:
 - Cross-widget communication goes through Textual messages (see `GameBoard.WordMissed`) or app-level reactives — not by reaching into another widget's internals.
 - No `print()` in committed code.
 
+## Tests
+
+`pytest` with everything under `tests/`. The commit hooks don't run it — the suite takes about 25 seconds, which is too long to pay on every commit — so run it yourself before you push. CI runs it on every PR.
+
+Run the whole suite, or narrow it down:
+
+```bash
+uv run pytest                        # everything
+uv run pytest tests/test_stats.py    # one file
+uv run pytest -k pause               # one idea
+uv run pytest -x -q                  # stop at the first failure
+```
+
+Two layers:
+
+- **`core/`** — plain unit tests for `config`, `paths`, `stats` and `words`. No Textual, no event loop, fast.
+- **TUI** — `test_app_runs.py`, `test_app_ui.py`, `test_gameplay.py` and `test_game_board.py` drive the real app through Textual's `run_test()` pilot, pressing keys and asserting on what the widgets end up holding. `asyncio_mode = "auto"` is set in `pyproject.toml`, so a test is async just by being `async def` — no decorator needed.
+
+Things worth knowing before you add a test:
+
+- The autouse `isolated_home` fixture in `conftest.py` points `GRAVITYPE_HOME` at a temp directory and re-initialises the `config` and `stats` singletons, so no test can see or clobber your real save. It also pins the working directory, because `paths.legacy_config_file()` resolves against the cwd and the repo root contains a `.gravitype_config.json`.
+- Use the `app` fixture to get a `GravitypeApp` built *after* that isolation is in place.
+- Don't monkeypatch `time.monotonic` — `asyncio` reads it too, and patching it deadlocks the event loop. To test elapsed time, backdate `app._run_started_at` instead (see `test_app_runs.py`).
+- Don't replace a widget's `post_message` to capture events; that is Textual's own message pump and swapping it hangs the widget. Assert on the consequence instead — a missed word is visible as `app.lives` going down.
+- `await pilot.pause()` after anything that changes state, so the app has a chance to process it.
+
 ## Commits
 
 Commit messages must follow [Conventional Commits](https://www.conventionalcommits.org/); Commitizen enforces this at commit time.
@@ -62,9 +88,8 @@ If you'd rather be prompted through the format, install Commitizen (`uv tool ins
 
 1. Branch off `main` — `feat/short-description` or `fix/short-description`.
 2. Make the change and play a few rounds to confirm nothing regressed: start a game, miss words, pause, game over, play again, main menu, change theme and lives in settings.
-3. Push and open a PR against `main` describing what changed and how you tested it. A screenshot or terminal recording helps a lot for anything visual.
-
-There is no automated test suite yet. If you add one, `pytest` with tests under `tests/` is the expected shape — and adding coverage for `core/` is a genuinely useful contribution.
+3. Add or update tests for what you changed, and run `uv run pytest`.
+4. Push and open a PR against `main` describing what changed and how you tested it. A screenshot or terminal recording helps a lot for anything visual. CI runs Ruff and the test suite on Python 3.9 through 3.13; it has to be green before a PR can merge.
 
 ## Common contributions
 

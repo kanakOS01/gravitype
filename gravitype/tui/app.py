@@ -1,3 +1,5 @@
+import time
+
 from textual import on
 from textual.app import App
 from textual.screen import Screen
@@ -7,10 +9,19 @@ from textual.containers import Container, Horizontal
 from textual.reactive import reactive
 
 from gravitype.core.config import config, generate_theme_file
+from gravitype.core.session import RunSession, format_percent, format_wpm
+from gravitype.core.stats import format_duration, stats
 from gravitype.tui.widgets.header import HeaderWidget
 from gravitype.tui.widgets.game_board import GameBoard
+from gravitype.tui.widgets.bignum import BigNumber
+from gravitype.tui.widgets.chart import BrailleChart
 from gravitype.tui.widgets.main_header import MainHeader, NavItem, Banner
-from gravitype.tui.widgets.screens import AboutScreen, HelpScreen, SettingsScreen
+from gravitype.tui.widgets.screens import (
+    AboutScreen,
+    HelpScreen,
+    SettingsScreen,
+    StatsScreen,
+)
 
 
 # --- Welcome/Start Menu Screen Widget ---
@@ -54,29 +65,63 @@ class WelcomeScreen(Widget):
 class GameOverScreen(Screen):
     """Displayed when lives run out, showing final stats and highscore."""
 
+    #: Columns in the secondary stats row, as (heading, value) callables.
+    SUMMARY_FIELDS = (
+        ("score", lambda app: f"{app.score:05d}"),
+        ("level", lambda app: str(app.level)),
+        ("words hit", lambda app: str(app.session.words_hit)),
+        ("time", lambda app: format_duration(app.run_seconds)),
+        ("category", lambda app: app.category.upper()),
+    )
+
     def compose(self):
+        session = self.app.session
+
         with Container(id="game-over-container"):
             yield Label("GAME OVER", classes="game-over-title")
-            yield Label(f"Score: {self.app.score:05d}", classes="subtitle")
 
-            is_new_high = self.app.is_new_high_score
-            high_score_text = (
-                f"High Score: {max(self.app.score, self.app.high_score):05d}"
-            )
+            with Horizontal(classes="result-body"):
+                with Container(classes="result-metrics"):
+                    yield BigNumber("wpm", format_wpm(session.wpm), id="result-wpm")
+                    yield BigNumber(
+                        "acc",
+                        format_percent(session.accuracy, suffix=""),
+                        id="result-acc",
+                    )
+                yield BrailleChart(
+                    session.wpm_series,
+                    session.error_series,
+                    x_label=self._chart_label(session),
+                    empty_message="no words typed this run",
+                    id="result-chart",
+                )
 
-            with Container(classes="stats-panel"):
-                if is_new_high:
-                    yield Label("★ NEW HIGH SCORE! ★", classes="new-high-badge")
-                yield Label(high_score_text, classes="label-info")
-                yield Label(f"Level Reached: {self.app.level}", classes="label-info")
+            with Horizontal(classes="result-row"):
+                for heading, value in self.SUMMARY_FIELDS:
+                    with Container(classes="result-field"):
+                        yield Label(heading, classes="result-field-label")
+                        yield Label(value(self.app), classes="result-field-value")
+
+            if self.app.is_new_high_score:
+                yield Label("★ NEW HIGH SCORE! ★", classes="new-high-badge")
+            else:
                 yield Label(
-                    f"Category: {self.app.category.upper()}", classes="label-info"
+                    f"High Score: {max(self.app.score, self.app.high_score):05d}",
+                    classes="label-info",
                 )
 
             with Horizontal(classes="action-row"):
                 yield Button("PLAY AGAIN", id="btn-retry", classes="action-btn")
                 yield Button("MAIN MENU", id="btn-menu", classes="action-btn")
                 yield Button("QUIT GAME", id="btn-quit", classes="danger-btn")
+
+    @staticmethod
+    def _chart_label(session) -> str:
+        """Caption the x-axis, which counts words rather than seconds."""
+        count = session.words_hit
+        if count < 2:
+            return "word 1" if count else ""
+        return f"word 1{' ' * 40}word {count}"
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         button_id = event.button.id
@@ -111,7 +156,12 @@ class GameScreen(Screen):
     def on_screen_resume(self) -> None:
         self.reset_game_state()
 
+    #: Last value seen in the input box, used to tell a typed character from
+    #: a backspace. Backspaces count towards neither accuracy total.
+    _previous_input = ""
+
     def reset_game_state(self) -> None:
+        self._previous_input = ""
         self.query_one("#word-input").value = ""
         self.query_one("#word-input").focus()
         self.query_one(GameBoard).clear_board()
@@ -132,15 +182,35 @@ class GameScreen(Screen):
 
     def on_input_changed(self, event: Input.Changed) -> None:
         typed = event.value.strip()
+        previous, self._previous_input = self._previous_input, typed
+
         if not typed:
             event.input.remove_class("typo")
             return
 
         board = self.query_one(GameBoard)
+        session = self.app.session
+
+        # A burst is timed from the keystroke that first put something in the
+        # box to the one that completes the word.
+        if not previous:
+            session.start_word()
+
         score_gained = board.check_match(typed)
         input_container = self.query_one("#input-container")
 
+        # check_match only matches on an exact equality, so a hit means the
+        # word typed *is* `typed` - no need for the board to hand it back.
+        # A valid prefix is what the game already uses to decide on the red
+        # flash below; it doubles as the per-keystroke accuracy signal.
+        has_valid_prefix = score_gained > 0 or any(
+            w.text.startswith(typed) for w in board.active_words
+        )
+        if len(typed) > len(previous):
+            session.record_keystroke(has_valid_prefix)
+
         if score_gained > 0:
+            session.record_hit(typed)
             self.app.score += score_gained
             # Increase level every 150 points
             self.app.level = 1 + (self.app.score // 150)
@@ -153,13 +223,10 @@ class GameScreen(Screen):
 
             input_container.add_class("flash-hit")
             self.set_timer(0.15, lambda: input_container.remove_class("flash-hit"))
+        elif not has_valid_prefix:
+            event.input.add_class("typo")
         else:
-            # Check if the currently typed string is a valid prefix of any active word
-            has_valid_prefix = any(w.text.startswith(typed) for w in board.active_words)
-            if not has_valid_prefix:
-                event.input.add_class("typo")
-            else:
-                event.input.remove_class("typo")
+            event.input.remove_class("typo")
 
     def on_game_board_word_missed(self, event: GameBoard.WordMissed) -> None:
         if self.app.lives <= 0:
@@ -180,6 +247,8 @@ class GameScreen(Screen):
     def action_toggle_pause(self) -> None:
         board = self.query_one(GameBoard)
         board.is_paused = not board.is_paused
+        # Paused seconds are not play time, so stop the clock while we wait.
+        self.app.set_run_paused(board.is_paused)
 
         input_widget = self.query_one("#word-input")
         if board.is_paused:
@@ -204,6 +273,7 @@ class MainScreen(Screen):
         ("ctrl+s", "switch_settings", "Settings"),
         ("ctrl+h", "switch_help", "Help"),
         ("ctrl+a", "switch_about", "About"),
+        ("ctrl+t", "switch_stats", "Stats"),
         ("escape", "switch_play", "Play"),
         ("ctrl+p", "switch_play", "Play"),
     ]
@@ -212,6 +282,7 @@ class MainScreen(Screen):
         yield MainHeader()
         yield ContentSwitcher(
             WelcomeScreen(id="welcome"),
+            StatsScreen(id="stats"),
             SettingsScreen(id="settings"),
             HelpScreen(id="help"),
             AboutScreen(id="about"),
@@ -234,6 +305,9 @@ class MainScreen(Screen):
     def action_switch_about(self) -> None:
         self.switch_to_screen("about")
 
+    def action_switch_stats(self) -> None:
+        self.switch_to_screen("stats")
+
     def action_switch_play(self) -> None:
         self.switch_to_screen("welcome")
 
@@ -244,6 +318,9 @@ class MainScreen(Screen):
         if screen_name == "welcome":
             welcome_screen = self.query_one(WelcomeScreen)
             welcome_screen.update_high_score()
+        elif screen_name == "stats":
+            # Re-read from disk so a run that just ended is reflected.
+            self.query_one(StatsScreen).sync_stats()
 
     @on(Button.Pressed)
     def handle_nav_button(self, event: Button.Pressed) -> None:
@@ -275,6 +352,13 @@ class GravitypeApp(App):
     is_new_high_score = False
 
     def __init__(self, *args, **kwargs) -> None:
+        # Per-run bookkeeping for the stats page. Plain attributes, not
+        # reactives - nothing renders them mid-game.
+        self._run_started_at = None
+        self._run_active_seconds = 0.0
+        self._run_recorded = True
+        #: Typing measurements for the run in progress.
+        self.session = RunSession()
         # Compile the active theme to a writable location, then hand the
         # generated file to Textual as this app's stylesheet.
         css_path = generate_theme_file(config.get("theme"))
@@ -285,13 +369,70 @@ class GravitypeApp(App):
         self.lives = config.get("starting_lives", 3)
         self.push_screen("main")
 
+    @property
+    def run_seconds(self) -> float:
+        """Active seconds in the current run, including any in-flight stretch.
+
+        By the time the results screen composes, ``_finish_run`` has already
+        banked the elapsed time, so this reads the final figure.
+        """
+        pending = 0.0
+        if self._run_started_at is not None:
+            pending = time.monotonic() - self._run_started_at
+        return self._run_active_seconds + pending
+
+    def set_run_paused(self, paused: bool) -> None:
+        """Stop or restart the play clock around a pause."""
+        if self._run_recorded:
+            return
+        if paused:
+            self._bank_elapsed()
+        elif self._run_started_at is None:
+            self._run_started_at = time.monotonic()
+
+    def _bank_elapsed(self) -> None:
+        """Fold any in-flight elapsed time into the run total."""
+        if self._run_started_at is not None:
+            self._run_active_seconds += time.monotonic() - self._run_started_at
+            self._run_started_at = None
+
+    def _finish_run(self, completed: bool) -> None:
+        """Record the current run, once.
+
+        Several paths end a run - game over, ctrl+g, PLAY AGAIN, quitting the
+        app - so this is idempotent and they can all call it freely.
+        """
+        if self._run_recorded:
+            return
+        self._run_recorded = True
+        self._bank_elapsed()
+        stats.record_game_finished(
+            self.category,
+            self.level,
+            self._run_active_seconds,
+            completed,
+            self.session,
+        )
+
     def show_menu(self) -> None:
+        # Leaving the board mid-run counts as started but not completed.
+        self._finish_run(completed=False)
         self.switch_screen("main")
 
     def start_new_game(self) -> None:
+        # Close out a run still in progress (PLAY AGAIN takes this path).
+        self._finish_run(completed=False)
+
         self.score = 0
         self.level = 1
         self.lives = config.get("starting_lives", 3)
+
+        self._run_active_seconds = 0.0
+        self._run_started_at = time.monotonic()
+        self._run_recorded = False
+        self.session.reset()
+        stats.record_game_started(self.category)
+
         self.switch_screen("game")
         try:
             self.get_screen("game").reset_game_state()
@@ -299,11 +440,16 @@ class GravitypeApp(App):
             pass
 
     def end_game(self) -> None:
+        self._finish_run(completed=True)
         self.is_new_high_score = self.score > self.high_score
         if self.is_new_high_score:
             self.high_score = self.score
             config.set("high_score", self.high_score)
         self.switch_screen("game_over")
+
+    def on_unmount(self) -> None:
+        # Quitting mid-run still counts the time and level played.
+        self._finish_run(completed=False)
 
     def action_open_github(self) -> None:
         import webbrowser

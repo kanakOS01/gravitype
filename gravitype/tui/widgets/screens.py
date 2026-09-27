@@ -4,6 +4,8 @@ from textual.containers import Container, Horizontal
 from textual.widget import Widget
 from textual.widgets import Label, Static, Select
 from gravitype.core.config import config, generate_theme_file
+from gravitype.core.session import format_percent, format_wpm
+from gravitype.core.stats import format_duration, stats
 from gravitype.tui.widgets.table import Table
 
 GENERAL_KEYBINDS = [
@@ -11,6 +13,7 @@ GENERAL_KEYBINDS = [
     ("ctrl+s", "Navigate to Settings"),
     ("ctrl+h / ?", "Navigate to Help"),
     ("ctrl+a", "Navigate to About"),
+    ("ctrl+t", "Navigate to Stats"),
     ("escape / ctrl+p", "Return to Menu/Play Setup"),
 ]
 
@@ -53,6 +56,72 @@ class HelpScreen(Widget):
             yield Label("HOW TO PLAY & KEYBINDS", classes="help-title")
             yield Table("General Navigation", GENERAL_KEYBINDS)
             yield Table("Active Gameplay", TYPING_KEYBINDS)
+
+
+class StatsScreen(Widget):
+    """
+    Lifetime play statistics, refreshed every time the tab is opened.
+    """
+
+    TITLE_PREFIX = ""
+
+    def compose(self) -> ComposeResult:
+        with Container(classes="stats-container"):
+            yield Label("YOUR STATS", classes="stats-title")
+            yield Table(
+                "Lifetime",
+                title_prefix=self.TITLE_PREFIX,
+                key_ratio=2,
+                id="stats-lifetime",
+            )
+            yield Table(
+                "By Category  (level · done/started · wpm · acc · time)",
+                title_prefix=self.TITLE_PREFIX,
+                key_ratio=2,
+                id="stats-categories",
+            )
+
+    def on_mount(self) -> None:
+        self.sync_stats()
+
+    def sync_stats(self) -> None:
+        """Re-read the stats file and rebuild both tables."""
+        data = stats.snapshot()
+
+        lifetime = [
+            ("Games Started", str(data["games_started"])),
+            ("Games Completed", str(data["games_completed"])),
+            ("Max Level Reached", str(data["max_level"])),
+            # A stored best of 0.0 means "never set", not "zero words a minute".
+            ("Best WPM", format_wpm(data["best_wpm"] or None)),
+            ("Average WPM", format_wpm(data["avg_wpm"])),
+            ("Accuracy", format_percent(data["accuracy"])),
+            ("Words Typed", str(data["words_hit"])),
+            ("Total Time Played", format_duration(data["total_play_seconds"])),
+        ]
+
+        categories = []
+        for name, values in sorted(data["categories"].items()):
+            categories.append(
+                (
+                    name.upper(),
+                    # Column meanings live in the table title, which keeps the
+                    # row short enough not to wrap on a narrow terminal.
+                    f"lvl {values['max_level']} \u00b7 "
+                    f"{values['games_completed']}/{values['games_started']} \u00b7 "
+                    f"{format_wpm(values['best_wpm'] or None)} \u00b7 "
+                    f"{format_percent(values['accuracy'])} \u00b7 "
+                    f"{format_duration(values['total_play_seconds'])}",
+                )
+            )
+        if not categories:
+            categories = [("\u2014", "No games played yet")]
+
+        try:
+            self.query_one("#stats-lifetime", Table).set_rows(lifetime)
+            self.query_one("#stats-categories", Table).set_rows(categories)
+        except Exception:
+            pass
 
 
 class SettingsScreen(Widget):

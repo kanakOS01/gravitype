@@ -316,13 +316,13 @@ Banner {
 
 /* Switched screens content windows */
 
-WelcomeScreen, AboutScreen, HelpScreen, SettingsScreen {
+WelcomeScreen, AboutScreen, HelpScreen, SettingsScreen, StatsScreen {
     align: center middle;
     padding: 1 3;
     height: 1fr;
 }
 
-.about-container, .settings-container, .help-container {
+.about-container, .settings-container, .help-container, .stats-container {
     width: 76;
     height: auto;
     background: $sub-alt-color;
@@ -330,7 +330,7 @@ WelcomeScreen, AboutScreen, HelpScreen, SettingsScreen {
     padding: 2 4;
 }
 
-.about-title, .help-title, .settings-title {
+.about-title, .help-title, .settings-title, .stats-title {
     width: 100%;
     content-align: center middle;
     text-style: bold;
@@ -408,6 +408,81 @@ SelectCurrent.-has-value Static#label {
 SelectOverlay {
     border: tall $sub-color;
     background: $bg-color;
+}
+
+/* Results screen (post-game) */
+.result-body {
+    width: 100%;
+    height: auto;
+    margin-bottom: 1;
+}
+
+.result-metrics {
+    width: 16;
+    height: auto;
+}
+
+BigNumber {
+    width: 100%;
+    height: auto;
+    margin-bottom: 1;
+}
+
+BigNumber > .bignumber--label {
+    color: $sub-color;
+}
+
+BigNumber > .bignumber--value {
+    color: $main-color;
+    text-style: bold;
+}
+
+#result-acc > .bignumber--value {
+    color: $text-color;
+}
+
+BrailleChart {
+    width: 1fr;
+    height: auto;
+}
+
+BrailleChart > .braillechart--line {
+    color: $main-color;
+}
+
+BrailleChart > .braillechart--marker {
+    color: $error-color;
+    text-style: bold;
+}
+
+BrailleChart > .braillechart--axis {
+    color: $sub-color;
+}
+
+BrailleChart > .braillechart--label {
+    color: $sub-color;
+}
+
+.result-row {
+    width: 100%;
+    height: auto;
+    margin-bottom: 1;
+}
+
+.result-field {
+    width: 1fr;
+    height: auto;
+}
+
+.result-field-label {
+    width: 100%;
+    color: $sub-color;
+}
+
+.result-field-value {
+    width: 100%;
+    color: $text-color;
+    text-style: bold;
 }
 
 /* Help keybind table styling */

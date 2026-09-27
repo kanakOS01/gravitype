@@ -32,6 +32,11 @@ def config_file() -> Path:
     return app_home() / "config.json"
 
 
+def stats_file() -> Path:
+    """Path to the persisted lifetime play stats."""
+    return app_home() / "stats.json"
+
+
 def generated_css_file() -> Path:
     """Path to the compiled active stylesheet.
 
