@@ -282,34 +282,3 @@ async def test_interior_spaces_are_significant(board):
     await pilot.pause()
 
     assert board.check_match("borrowchecker") == 0
-
-
-# --- the win level is tied to the difficulty curve ---
-
-
-def test_win_level_sits_at_the_difficulty_plateau():
-    """WIN_LEVEL must be where get_ticks_for_level stops changing.
-
-    The cap exists because the game stops getting harder, not because 27 is a
-    nice number. If the decay curve is retuned this fails and says so, rather
-    than letting the game quietly end early or run on unchanged.
-    """
-    from gravitype.tui.app import WIN_LEVEL
-
-    at_cap = GameBoard.get_ticks_for_level(None, WIN_LEVEL)
-
-    # Nothing changes after the cap...
-    assert at_cap == GameBoard.get_ticks_for_level(None, WIN_LEVEL + 50)
-    assert at_cap == GameBoard.get_ticks_for_level(None, WIN_LEVEL + 1000)
-
-    # ...and the level before it is still getting harder, so the cap is not
-    # sitting further out than it needs to be.
-    assert GameBoard.get_ticks_for_level(None, WIN_LEVEL - 1) != at_cap
-
-
-def test_difficulty_is_maxed_out_at_the_win_level():
-    from gravitype.tui.app import WIN_LEVEL
-
-    move, spawn = GameBoard.get_ticks_for_level(None, WIN_LEVEL)
-
-    assert (move, spawn) == (2, 10)

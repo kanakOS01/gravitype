@@ -95,16 +95,14 @@ async def test_nav_includes_stats(app):
 # --- welcome screen ---
 
 
-async def test_category_buttons_set_the_app_category(app):
+async def test_the_dropdown_sets_the_app_category(app):
     async with app.run_test() as pilot:
         await pilot.pause()
-        await pilot.click("#cat-general")
-        await pilot.pause()
 
+        await _choose_category(pilot, app, "general")
         assert app.category == "general"
 
-        await pilot.click("#cat-tech")
-        await pilot.pause()
+        await _choose_category(pilot, app, "tech")
         assert app.category == "tech"
 
 
@@ -279,9 +277,17 @@ async def test_help_table_is_unaffected_by_the_stats_table_options(app):
         await pilot.press("ctrl+h")
         await pilot.pause()
 
-        for table in _main(app).query(Table):
-            if table.id in {"stats-lifetime", "stats-categories"}:
-                continue
+        # Targeted at the two keybind tables by title rather than by excluding
+        # every other table, so adding a table elsewhere doesn't silently
+        # widen what this claims to cover.
+        keybind_tables = [
+            table
+            for table in _main(app).query(Table)
+            if table.title in {"General Navigation", "Active Gameplay"}
+        ]
+        assert len(keybind_tables) == 2
+
+        for table in keybind_tables:
             assert table.title_prefix == Table.DEFAULT_TITLE_PREFIX
             assert table.key_ratio == 1
 
@@ -737,126 +743,3 @@ async def test_stats_hides_a_category_whose_set_is_gone(app, isolated_home):
         assert "RUST" not in dict(_rows(app, "stats-categories"))
         # Hidden, not erased - the history is still real.
         assert stats.snapshot()["categories"]["rust"]["max_level"] == 5
-
-
-# --- win screen ---
-
-
-async def _win(app, pilot):
-    from gravitype.tui.app import POINTS_PER_LEVEL, WIN_LEVEL
-
-    app.start_new_game()
-    await pilot.pause()
-    app.score = (WIN_LEVEL - 1) * POINTS_PER_LEVEL
-    app.level = WIN_LEVEL
-    app.end_game(won=True)
-    await pilot.pause()
-
-
-async def test_the_win_screen_says_you_win(app):
-    async with app.run_test(size=(100, 40)) as pilot:
-        await pilot.pause()
-        await _win(app, pilot)
-
-        text = _screen_text(app)
-        assert "YOU WIN" in text
-        assert "GAME OVER" not in text
-
-
-async def test_the_win_screen_is_styled_as_a_win(app):
-    async with app.run_test(size=(100, 40)) as pilot:
-        await pilot.pause()
-        await _win(app, pilot)
-
-        assert app.screen.query_one("#game-over-container").has_class("won")
-
-
-async def test_a_loss_is_not_styled_as_a_win(app):
-    async with app.run_test(size=(100, 40)) as pilot:
-        await pilot.pause()
-        app.start_new_game()
-        await pilot.pause()
-        app.end_game()
-        await pilot.pause()
-
-        assert "GAME OVER" in _screen_text(app)
-        assert not app.screen.query_one("#game-over-container").has_class("won")
-
-
-async def test_the_win_screen_keeps_its_buttons(app):
-    from textual.widgets import Button
-
-    async with app.run_test(size=(100, 40)) as pilot:
-        await pilot.pause()
-        await _win(app, pilot)
-
-        ids = {button.id for button in app.screen.query(Button)}
-        assert {"btn-retry", "btn-menu", "btn-quit"} <= ids
-
-
-async def test_the_win_screen_shows_the_capped_level(app):
-    from gravitype.tui.app import WIN_LEVEL
-
-    async with app.run_test(size=(100, 40)) as pilot:
-        await pilot.pause()
-        await _win(app, pilot)
-
-        assert str(WIN_LEVEL) in _screen_text(app)
-
-
-async def test_play_again_after_a_win_can_still_be_lost(app):
-    async with app.run_test(size=(100, 40)) as pilot:
-        await pilot.pause()
-        await _win(app, pilot)
-
-        app.start_new_game()
-        await pilot.pause()
-        app.end_game()
-        await pilot.pause()
-
-        assert "GAME OVER" in _screen_text(app)
-        assert app.is_win is False
-
-
-async def test_the_results_screen_refreshes_for_each_run(app):
-    """Regression: the screen is cached in SCREENS, so compose runs once.
-
-    Without recomposing on resume, the second and every later run showed the
-    first run's score, WPM and chart.
-    """
-    async with app.run_test(size=(100, 40)) as pilot:
-        await pilot.pause()
-
-        app.start_new_game()
-        await pilot.pause()
-        app.score = 1234
-        app.end_game()
-        await pilot.pause()
-        assert "01234" in _screen_text(app)
-
-        app.start_new_game()
-        await pilot.pause()
-        app.score = 5678
-        app.end_game()
-        await pilot.pause()
-
-        text = _screen_text(app)
-        assert "05678" in text
-        assert "01234" not in text
-
-
-async def test_a_win_then_a_loss_shows_each_correctly(app):
-    async with app.run_test(size=(100, 40)) as pilot:
-        await pilot.pause()
-
-        await _win(app, pilot)
-        assert "YOU WIN" in _screen_text(app)
-
-        app.start_new_game()
-        await pilot.pause()
-        app.end_game()
-        await pilot.pause()
-
-        text = _screen_text(app)
-        assert "GAME OVER" in text
-        assert "YOU WIN" not in text

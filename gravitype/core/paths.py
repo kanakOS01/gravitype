@@ -37,6 +37,11 @@ def stats_file() -> Path:
     return app_home() / "stats.json"
 
 
+def words_dir() -> Path:
+    """Directory holding the player's own word sets, one ``.txt`` per set."""
+    return app_home() / "words"
+
+
 def generated_css_file() -> Path:
     """Path to the compiled active stylesheet.
 

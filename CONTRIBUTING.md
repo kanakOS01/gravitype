@@ -93,9 +93,9 @@ If you'd rather be prompted through the format, install Commitizen (`uv tool ins
 
 ## Common contributions
 
-**Adding words** — append to `TECH_WORDS` or `GENERAL_WORDS` in `gravitype/core/words.py`. Keep them lowercase, no spaces or punctuation, and note that word length decides which level a word can appear at (see `get_random_word`), so short words are as valuable as long ones.
+**Adding words** — append to `TECH_WORDS` or `GENERAL_WORDS` in `gravitype/core/words.py`. Keep them lowercase, no spaces or punctuation, and note that word length decides which level a word can appear at (see `get_random_word`), so short words are as valuable as long ones. (The built-in pools hold to that rule; a player's own set is deliberately looser and may contain phrases and capitals.)
 
-**Adding a category** — extend the pools and the branch in `get_random_word`, then add a category button in `WelcomeScreen.compose` with id `cat-<name>`; the existing handler picks it up from the id.
+**Adding a category** — usually no code is needed: a `.txt` file in `~/.gravitype/words/` becomes a category on its own (see [Custom word sets](README.md#custom-word-sets)). To add one that *ships with the game*, add the pool to `gravitype/core/words.py`, list its name in `BUILTIN_CATEGORIES` and return it from `word_pool`. The menu builds its dropdown from `available_categories()`, so nothing in the UI needs touching.
 
 **Adding a theme** — copy an existing file in `gravitype/tui/styles/themes/`, keep the same variable names, and add an option to the theme `Select` in `gravitype/tui/widgets/screens.py`. Note that `theme_active.tcss` is generated output living in `~/.gravitype/` — don't put changes there, they'll be overwritten on next launch.
 
