@@ -332,3 +332,219 @@ async def test_typing_figures_reach_the_lifetime_stats(app):
         assert snap["words_hit"] == 1
         assert snap["best_wpm"] > 0
         assert snap["accuracy"] is not None
+
+
+# --- phrases ---
+
+
+async def test_typing_a_phrase_matches_and_scores(app):
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        board, field = await _in_game(app, pilot)
+        board.spawn_word("borrow checker")
+        await pilot.pause()
+
+        await type_word(pilot, field, "borrow checker")
+
+        assert app.score == 140
+        assert field.value == ""
+
+
+async def test_a_phrase_space_counts_as_a_keystroke(app):
+    """Regression: the input is stripped before the growth test, so the space
+    in a phrase used to slip past the accuracy counter."""
+    phrase = "borrow checker"
+
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        board, field = await _in_game(app, pilot)
+        board.spawn_word(phrase)
+        await pilot.pause()
+
+        await type_word(pilot, field, phrase)
+
+        assert app.session.total_keystrokes == len(phrase)
+        assert app.session.accuracy == 1.0
+
+
+async def test_a_phrase_is_not_flagged_as_a_typo_partway_through(app):
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        board, field = await _in_game(app, pilot)
+        board.spawn_word("borrow checker")
+        await pilot.pause()
+
+        for length in range(1, len("borrow checker")):
+            field.value = "borrow checker"[:length]
+            await pilot.pause()
+            assert not field.has_class("typo"), f"typo flagged at {length}"
+
+
+async def test_a_phrase_is_timed_from_its_first_keystroke(app):
+    phrase = "borrow checker"
+
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        board, field = await _in_game(app, pilot)
+        clock = fake_clock(app)
+        board.spawn_word(phrase)
+        await pilot.pause()
+
+        await type_word(pilot, field, phrase, clock, step=0.1)
+
+        # 14 chars = 2.8 words, over 13 gaps of 0.1s.
+        assert app.session.words_hit == 1
+        assert app.session.wpm == pytest.approx((len(phrase) / 5) / (1.3 / 60))
+
+
+async def test_a_capitalised_word_must_be_typed_with_its_capitals(app):
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        board, field = await _in_game(app, pilot)
+        board.spawn_word("Rust")
+        await pilot.pause()
+
+        await type_word(pilot, field, "rust")
+
+        assert app.score == 0
+        assert len(board.active_words) == 1
+
+
+async def test_a_capitalised_word_matches_when_typed_exactly(app):
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        board, field = await _in_game(app, pilot)
+        board.spawn_word("Rust")
+        await pilot.pause()
+
+        await type_word(pilot, field, "Rust")
+
+        assert app.score == 40
+        assert board.active_words == []
+
+
+async def test_the_wrong_case_is_flagged_as_a_typo(app):
+    """Case-sensitive matching means a lowercase start is not a valid prefix."""
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        board, field = await _in_game(app, pilot)
+        board.spawn_word("Rust")
+        await pilot.pause()
+
+        field.value = "r"
+        await pilot.pause()
+
+        assert field.has_class("typo")
+
+
+async def test_a_capitalised_phrase_is_not_flagged_when_typed_exactly(app):
+    phrase = "Borrow Checker"
+
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        board, field = await _in_game(app, pilot)
+        board.spawn_word(phrase)
+        await pilot.pause()
+
+        for length in range(1, len(phrase)):
+            field.value = phrase[:length]
+            await pilot.pause()
+            assert not field.has_class("typo"), f"typo flagged at {length}"
+
+
+# --- winning ---
+
+
+async def _score_to(app, pilot, start_score, word, category="tech"):
+    """Start a run at ``start_score`` and clear one more word."""
+    app.category = category
+    app.start_new_game()
+    await pilot.pause()
+    board = app.screen.query_one(GameBoard)
+    field = app.screen.query_one("#word-input", Input)
+    app.score = start_score
+    board.spawn_word(word)
+    await pilot.pause()
+    await type_word(pilot, field, word)
+    await pilot.pause()
+    return board
+
+
+async def test_reaching_the_win_level_ends_the_run(app):
+    from gravitype.tui.app import POINTS_PER_LEVEL, WIN_LEVEL
+
+    threshold = (WIN_LEVEL - 1) * POINTS_PER_LEVEL
+
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        await _score_to(app, pilot, threshold - 60, "python")
+
+        assert app.score == threshold
+        assert app.level == WIN_LEVEL
+        assert app.is_win is True
+        assert app.screen.__class__.__name__ == "GameOverScreen"
+
+
+async def test_falling_short_does_not_win(app):
+    from gravitype.tui.app import POINTS_PER_LEVEL, WIN_LEVEL
+
+    threshold = (WIN_LEVEL - 1) * POINTS_PER_LEVEL
+
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        await _score_to(app, pilot, threshold - 120, "python")
+
+        assert app.level == WIN_LEVEL - 1
+        assert app.is_win is False
+        assert app.screen.__class__.__name__ == "GameScreen"
+
+
+async def test_the_level_is_capped_at_the_win_level(app):
+    """One long phrase can jump several levels at once."""
+    from gravitype.tui.app import POINTS_PER_LEVEL, WIN_LEVEL
+
+    phrase = "a rolling stone gathers no moss"
+    threshold = (WIN_LEVEL - 1) * POINTS_PER_LEVEL
+
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        await _score_to(app, pilot, threshold - 100, phrase)
+
+        # Uncapped this would be level 28.
+        assert 1 + app.score // POINTS_PER_LEVEL > WIN_LEVEL
+        assert app.level == WIN_LEVEL
+        assert app.is_win is True
+
+
+async def test_losing_is_not_a_win(app):
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        board, field = await _in_game(app, pilot)
+        app.lives = 1
+
+        board.spawn_word("docker")
+        await pilot.pause()
+        word = board.active_words[0]
+        word.y = (board.size.height or 20) - 1
+        word.ticks_since_move = word.move_ticks
+        board.game_tick()
+        await pilot.pause()
+
+        assert app.is_win is False
+        assert app.screen.__class__.__name__ == "GameOverScreen"
+
+
+async def test_play_again_clears_the_win_flag(app):
+    from gravitype.tui.app import POINTS_PER_LEVEL, WIN_LEVEL
+
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        await _score_to(app, pilot, (WIN_LEVEL - 1) * POINTS_PER_LEVEL - 60, "python")
+        assert app.is_win is True
+
+        app.start_new_game()
+        await pilot.pause()
+
+        assert app.is_win is False
+        assert app.score == 0
+        assert app.level == 1

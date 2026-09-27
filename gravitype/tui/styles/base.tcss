@@ -37,6 +37,19 @@ WelcomeScreen, GameOverScreen {
     margin-bottom: 1;
 }
 
+/* A won run keeps the same layout, in the theme colour rather than red. */
+#game-over-container.won {
+    border: double $main-color;
+}
+
+.win-title {
+    width: 100%;
+    content-align: center middle;
+    text-style: bold;
+    color: $main-color;
+    margin-bottom: 1;
+}
+
 .game-over-title {
     width: 100%;
     content-align: center middle;

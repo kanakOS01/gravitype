@@ -99,7 +99,7 @@ If you'd rather be prompted through the format, install Commitizen (`uv tool ins
 
 **Adding a theme** — copy an existing file in `gravitype/tui/styles/themes/`, keep the same variable names, and add an option to the theme `Select` in `gravitype/tui/widgets/screens.py`. Note that `theme_active.tcss` is generated output living in `~/.gravitype/` — don't put changes there, they'll be overwritten on next launch.
 
-**Tuning difficulty** — `GameBoard.get_ticks_for_level` controls fall speed and spawn rate; the level threshold and per-word points live in `GameScreen.on_input_changed`.
+**Tuning difficulty** — `GameBoard.get_ticks_for_level` controls fall speed and spawn rate; `POINTS_PER_LEVEL` and the per-word points live in `gravitype/tui/app.py`. Note that `WIN_LEVEL` is tied to that curve: the game is won at the level where `get_ticks_for_level` stops changing, so retuning the decay means moving the cap too. `test_win_level_sits_at_the_difficulty_plateau` fails if the two drift apart.
 
 ## Recording demos
 

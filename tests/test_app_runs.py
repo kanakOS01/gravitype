@@ -246,3 +246,77 @@ async def test_stats_survive_across_app_instances(app):
     assert snap["games_started"] == 2
     assert snap["games_completed"] == 1
     assert snap["max_level"] == 11
+
+
+# --- winning ---
+
+
+def _win_threshold():
+    from gravitype.tui.app import POINTS_PER_LEVEL, WIN_LEVEL
+
+    return (WIN_LEVEL - 1) * POINTS_PER_LEVEL
+
+
+async def test_a_win_records_as_a_completed_game(app):
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        await _start(pilot, app)
+        app.score = _win_threshold()
+        app.end_game(won=True)
+        await pilot.pause()
+
+        snap = _snap()
+        assert snap["games_started"] == 1
+        assert snap["games_completed"] == 1
+        assert app.is_win is True
+
+
+async def test_a_win_updates_the_high_score(app):
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        app.high_score = 100
+        await _start(pilot, app)
+        app.score = _win_threshold()
+        app.end_game(won=True)
+        await pilot.pause()
+
+        assert app.is_new_high_score is True
+        assert app.high_score == _win_threshold()
+
+
+async def test_a_win_and_a_loss_record_only_one_run(app):
+    """A match and a miss can land close enough together to both end the run."""
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        await _start(pilot, app)
+
+        app.end_game(won=True)
+        app.end_game(won=False)
+        await pilot.pause()
+
+        assert _snap()["games_completed"] == 1
+        # The first outcome stands; the second call is a no-op.
+        assert app.is_win is True
+
+
+async def test_a_loss_after_a_win_does_not_flip_the_outcome(app):
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        await _start(pilot, app)
+        app.end_game(won=True)
+        await pilot.pause()
+
+        # The loss path fires on the next missed word.
+        app.end_game()
+        await pilot.pause()
+
+        assert app.is_win is True
+
+
+async def test_ending_a_run_that_never_started_is_a_no_op(app):
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        app.end_game(won=True)
+        await pilot.pause()
+
+        assert _snap()["games_completed"] == 0

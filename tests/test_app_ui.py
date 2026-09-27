@@ -493,3 +493,370 @@ def _built_session():
         now[0] += 0.5
         session.record_hit(word)
     return session
+
+
+# --- custom word sets in the menu ---
+
+
+def _write_set(isolated_home, name, text):
+    from gravitype.core.paths import words_dir
+
+    directory = words_dir()
+    directory.mkdir(parents=True, exist_ok=True)
+    path = directory / f"{name}.txt"
+    path.write_text(text, encoding="utf-8")
+    return path
+
+
+def _category_select(app):
+    from textual.widgets import Select
+
+    return _main(app).query_one("#category-select", Select)
+
+
+def _categories(app):
+    """The categories the dropdown offers, in order, as the player sees them.
+
+    Read off the overlay's public options rather than the Select's private
+    option list, and lowercased back to the category names the app uses.
+    """
+    from textual.widgets._select import SelectOverlay
+
+    overlay = _category_select(app).query_one(SelectOverlay)
+    return [str(option.prompt).lower() for option in overlay.options]
+
+
+async def _choose_category(pilot, app, name):
+    """Pick a category the way the dropdown exposes it."""
+    _category_select(app).value = name
+    await pilot.pause()
+
+
+async def test_only_builtins_without_custom_sets(app):
+    async with app.run_test() as pilot:
+        await pilot.pause()
+
+        assert _categories(app) == ["tech", "general"]
+
+
+async def test_a_custom_set_appears_as_a_category(app, isolated_home):
+    _write_set(isolated_home, "rust", "rust\ncargo\n")
+
+    async with app.run_test() as pilot:
+        await pilot.pause()
+
+        assert _categories(app) == ["tech", "general", "rust"]
+
+
+async def test_builtins_come_first_then_sets_alphabetically(app, isolated_home):
+    _write_set(isolated_home, "zebra", "zebra\n")
+    _write_set(isolated_home, "alpha", "alpha\n")
+
+    async with app.run_test() as pilot:
+        await pilot.pause()
+
+        assert _categories(app) == ["tech", "general", "alpha", "zebra"]
+
+
+async def test_selecting_a_custom_set_sets_the_category(app, isolated_home):
+    _write_set(isolated_home, "rust", "rust\ncargo\n")
+
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        await _choose_category(pilot, app, "rust")
+
+        assert app.category == "rust"
+
+
+async def test_the_dropdown_shows_the_selected_category(app, isolated_home):
+    _write_set(isolated_home, "rust", "rust\n")
+
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        await _choose_category(pilot, app, "rust")
+
+        assert _category_select(app).value == "rust"
+
+
+async def test_a_set_added_mid_session_appears_on_the_next_visit(app, isolated_home):
+    """No restart needed - the menu re-scans on the way back."""
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        assert "rust" not in _categories(app)
+
+        _write_set(isolated_home, "rust", "rust\n")
+        await pilot.press("ctrl+a")
+        await pilot.pause()
+        await pilot.press("escape")
+        await pilot.pause()
+
+        assert "rust" in _categories(app)
+
+
+async def test_the_selection_survives_a_refresh(app, isolated_home):
+    _write_set(isolated_home, "rust", "rust\n")
+
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        await _choose_category(pilot, app, "rust")
+
+        await pilot.press("ctrl+a")
+        await pilot.pause()
+        await pilot.press("escape")
+        await pilot.pause()
+
+        assert app.category == "rust"
+        assert _category_select(app).value == "rust"
+
+
+async def test_a_deleted_set_disappears_and_selection_falls_back(app, isolated_home):
+    path = _write_set(isolated_home, "rust", "rust\n")
+
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        await _choose_category(pilot, app, "rust")
+        assert app.category == "rust"
+
+        path.unlink()
+        await pilot.press("ctrl+a")
+        await pilot.pause()
+        await pilot.press("escape")
+        await pilot.pause()
+
+        assert "rust" not in _categories(app)
+        assert app.category == "tech"
+
+
+async def test_a_set_named_after_a_builtin_is_not_offered_twice(app, isolated_home):
+    _write_set(isolated_home, "tech", "not-a-real-word\n")
+
+    async with app.run_test() as pilot:
+        await pilot.pause()
+
+        assert _categories(app) == ["tech", "general"]
+
+
+async def test_refreshing_does_not_duplicate_options(app, isolated_home):
+    """A refresh that changes nothing should leave the dropdown alone."""
+    _write_set(isolated_home, "rust", "rust\n")
+
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        for _ in range(3):
+            await pilot.press("ctrl+a")
+            await pilot.pause()
+            await pilot.press("escape")
+            await pilot.pause()
+
+        assert _categories(app) == ["tech", "general", "rust"]
+
+
+async def test_playing_a_custom_set_draws_from_it(app, isolated_home):
+    from gravitype.tui.widgets.game_board import GameBoard
+
+    _write_set(isolated_home, "rust", "rust\ncargo\ncrate\n")
+
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        await _choose_category(pilot, app, "rust")
+        app.start_new_game()
+        await pilot.pause()
+
+        board = app.screen.query_one(GameBoard)
+        for _ in range(15):
+            board.game_tick()
+        await pilot.pause()
+
+        for word in board.active_words:
+            assert word.text in {"rust", "cargo", "crate"}
+
+
+# --- custom sets on the help and stats pages ---
+
+
+def _help_rows(app):
+    from gravitype.tui.widgets.screens import HelpScreen
+
+    return dict(
+        _main(app).query_one(HelpScreen).query_one("#help-word-sets", Table).keys
+    )
+
+
+async def test_help_lists_loaded_sets(app, isolated_home):
+    _write_set(isolated_home, "rust", "rust\ncargo\n")
+
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        await pilot.press("ctrl+h")
+        await pilot.pause()
+
+        assert _help_rows(app)["RUST"] == "2 entries"
+
+
+async def test_help_explains_a_skipped_file(app, isolated_home):
+    """A file that fails to load is otherwise invisible."""
+    _write_set(isolated_home, "blank", "\n\n")
+    _write_set(isolated_home, "tech", "nope\n")
+
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        await pilot.press("ctrl+h")
+        await pilot.pause()
+
+        rows = _help_rows(app)
+        assert "no usable entries" in rows["blank.txt"]
+        assert "reserved" in rows["tech.txt"]
+
+
+async def test_help_says_so_when_there_are_no_sets(app):
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        await pilot.press("ctrl+h")
+        await pilot.pause()
+
+        assert "none yet" in _help_rows(app)
+
+
+async def test_stats_hides_a_category_whose_set_is_gone(app, isolated_home):
+    path = _write_set(isolated_home, "rust", "rust\n")
+    stats.record_game_started("rust")
+    stats.record_game_finished("rust", level=5, seconds=60.0, completed=True)
+
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        await pilot.press("ctrl+t")
+        await pilot.pause()
+        assert "RUST" in dict(_rows(app, "stats-categories"))
+
+        path.unlink()
+        await pilot.press("escape")
+        await pilot.pause()
+        await pilot.press("ctrl+t")
+        await pilot.pause()
+
+        assert "RUST" not in dict(_rows(app, "stats-categories"))
+        # Hidden, not erased - the history is still real.
+        assert stats.snapshot()["categories"]["rust"]["max_level"] == 5
+
+
+# --- win screen ---
+
+
+async def _win(app, pilot):
+    from gravitype.tui.app import POINTS_PER_LEVEL, WIN_LEVEL
+
+    app.start_new_game()
+    await pilot.pause()
+    app.score = (WIN_LEVEL - 1) * POINTS_PER_LEVEL
+    app.level = WIN_LEVEL
+    app.end_game(won=True)
+    await pilot.pause()
+
+
+async def test_the_win_screen_says_you_win(app):
+    async with app.run_test(size=(100, 40)) as pilot:
+        await pilot.pause()
+        await _win(app, pilot)
+
+        text = _screen_text(app)
+        assert "YOU WIN" in text
+        assert "GAME OVER" not in text
+
+
+async def test_the_win_screen_is_styled_as_a_win(app):
+    async with app.run_test(size=(100, 40)) as pilot:
+        await pilot.pause()
+        await _win(app, pilot)
+
+        assert app.screen.query_one("#game-over-container").has_class("won")
+
+
+async def test_a_loss_is_not_styled_as_a_win(app):
+    async with app.run_test(size=(100, 40)) as pilot:
+        await pilot.pause()
+        app.start_new_game()
+        await pilot.pause()
+        app.end_game()
+        await pilot.pause()
+
+        assert "GAME OVER" in _screen_text(app)
+        assert not app.screen.query_one("#game-over-container").has_class("won")
+
+
+async def test_the_win_screen_keeps_its_buttons(app):
+    from textual.widgets import Button
+
+    async with app.run_test(size=(100, 40)) as pilot:
+        await pilot.pause()
+        await _win(app, pilot)
+
+        ids = {button.id for button in app.screen.query(Button)}
+        assert {"btn-retry", "btn-menu", "btn-quit"} <= ids
+
+
+async def test_the_win_screen_shows_the_capped_level(app):
+    from gravitype.tui.app import WIN_LEVEL
+
+    async with app.run_test(size=(100, 40)) as pilot:
+        await pilot.pause()
+        await _win(app, pilot)
+
+        assert str(WIN_LEVEL) in _screen_text(app)
+
+
+async def test_play_again_after_a_win_can_still_be_lost(app):
+    async with app.run_test(size=(100, 40)) as pilot:
+        await pilot.pause()
+        await _win(app, pilot)
+
+        app.start_new_game()
+        await pilot.pause()
+        app.end_game()
+        await pilot.pause()
+
+        assert "GAME OVER" in _screen_text(app)
+        assert app.is_win is False
+
+
+async def test_the_results_screen_refreshes_for_each_run(app):
+    """Regression: the screen is cached in SCREENS, so compose runs once.
+
+    Without recomposing on resume, the second and every later run showed the
+    first run's score, WPM and chart.
+    """
+    async with app.run_test(size=(100, 40)) as pilot:
+        await pilot.pause()
+
+        app.start_new_game()
+        await pilot.pause()
+        app.score = 1234
+        app.end_game()
+        await pilot.pause()
+        assert "01234" in _screen_text(app)
+
+        app.start_new_game()
+        await pilot.pause()
+        app.score = 5678
+        app.end_game()
+        await pilot.pause()
+
+        text = _screen_text(app)
+        assert "05678" in text
+        assert "01234" not in text
+
+
+async def test_a_win_then_a_loss_shows_each_correctly(app):
+    async with app.run_test(size=(100, 40)) as pilot:
+        await pilot.pause()
+
+        await _win(app, pilot)
+        assert "YOU WIN" in _screen_text(app)
+
+        app.start_new_game()
+        await pilot.pause()
+        app.end_game()
+        await pilot.pause()
+
+        text = _screen_text(app)
+        assert "GAME OVER" in text
+        assert "YOU WIN" not in text

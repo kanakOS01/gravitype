@@ -73,6 +73,7 @@ uv run gravitype
 - Two word categories: **Tech** and **General**
 - 7 colour themes (Dracula, Nord, Tokyo Night, Gruvbox, Catppuccin, Cyberspace, 80s After Dark)
 - Configurable starting lives (3 / 5 / 8) and bell-on-miss sound
+- A winnable ending: reach level 27 and the run is won
 - Persistent high score
 - Post-game results screen: WPM, accuracy and a chart of your speed across the run
 - Lifetime stats: best and average WPM, accuracy, max level (overall and per category), games started, games completed and total time played
@@ -84,11 +85,13 @@ Words spawn at the top of the board and drift down. Type a word and it disappear
 
 If a word reaches the bottom you lose a life. At zero lives the run ends and your score is checked against the high score.
 
+**Reaching level 27 wins the game.** That is 3,900 points, and it is where the difficulty stops climbing — `get_ticks_for_level` decays both the fall speed and the spawn rate toward floors that are both reached by level 27, so level 40 would play exactly like level 27. Rather than counting up forever, the run ends there with a win. Expect to need somewhere around 140 WPM sustained on three lives; it is a real target, not a formality.
+
 When a run ends you get a results screen: your **WPM**, your **accuracy**, and a chart of how fast you typed each word, with a red × on the words you fumbled.
 
 WPM is measured per word — the clock runs from the first keystroke of a word to the moment it matches, so the time you spend waiting for the next word to spawn isn't counted against you. A plain session average would mostly just tell you which level you reached, because the spawn rate caps how much there is to type. Accuracy is the share of keystrokes that kept what you'd typed a valid start of some word on screen; backspacing to fix a mistake doesn't count against you, but the wrong keystroke already did.
 
-Every run is recorded on the **Stats** page (`ctrl+t`). A run counts as *completed* only if you played it out to GAME OVER — leaving with `ctrl+g` or quitting mid-run counts as started but not completed, though the level you reached and the time you played still count. Paused time is not counted as play time.
+Every run is recorded on the **Stats** page (`ctrl+t`). A run counts as *completed* if you played it out to the end, whether that was a win or a GAME OVER — leaving with `ctrl+g` or quitting mid-run counts as started but not completed, though the level you reached and the time you played still count. Paused time is not counted as play time.
 
 The input box flashes on a hit, and turns red the moment what you have typed is no longer the prefix of any word on screen.
 

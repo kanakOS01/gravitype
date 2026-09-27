@@ -23,6 +23,15 @@ from gravitype.tui.widgets.screens import (
     StatsScreen,
 )
 
+#: Points required per level.
+POINTS_PER_LEVEL = 150
+
+#: Reaching this level wins the game. It is where
+#: ``GameBoard.get_ticks_for_level`` stops changing - past here the game is not
+#: getting harder, only counting higher, so there is nothing left to play for.
+#: ``test_win_level_sits_at_the_difficulty_plateau`` keeps the two in step.
+WIN_LEVEL = 27
+
 
 # --- Welcome/Start Menu Screen Widget ---
 class WelcomeScreen(Widget):
@@ -63,7 +72,11 @@ class WelcomeScreen(Widget):
 
 # --- Game Over Screen ---
 class GameOverScreen(Screen):
-    """Displayed when lives run out, showing final stats and highscore."""
+    """Shown when a run ends, whether it was won or lost.
+
+    The layout is the same either way - the run's figures are what you want to
+    see in both cases - so a win only changes the title and the frame colour.
+    """
 
     #: Columns in the secondary stats row, as (heading, value) callables.
     SUMMARY_FIELDS = (
@@ -76,9 +89,17 @@ class GameOverScreen(Screen):
 
     def compose(self):
         session = self.app.session
+        won = self.app.is_win
 
-        with Container(id="game-over-container"):
-            yield Label("GAME OVER", classes="game-over-title")
+        container = Container(id="game-over-container")
+        if won:
+            container.add_class("won")
+
+        with container:
+            yield Label(
+                "YOU WIN" if won else "GAME OVER",
+                classes="win-title" if won else "game-over-title",
+            )
 
             with Horizontal(classes="result-body"):
                 with Container(classes="result-metrics"):
@@ -114,6 +135,17 @@ class GameOverScreen(Screen):
                 yield Button("PLAY AGAIN", id="btn-retry", classes="action-btn")
                 yield Button("MAIN MENU", id="btn-menu", classes="action-btn")
                 yield Button("QUIT GAME", id="btn-quit", classes="danger-btn")
+
+    async def on_screen_resume(self) -> None:
+        """Rebuild for the run that just ended.
+
+        This screen is registered in ``SCREENS``, so Textual caches the
+        instance and ``compose`` runs only once. Every figure here is read at
+        compose time, so without recomposing the second and every later run
+        would show the first one's score, WPM and chart - and, now that a run
+        can be won, a lost run could still read YOU WIN.
+        """
+        await self.recompose()
 
     @staticmethod
     def _chart_label(session) -> str:
@@ -212,10 +244,15 @@ class GameScreen(Screen):
         if score_gained > 0:
             session.record_hit(typed)
             self.app.score += score_gained
-            # Increase level every 150 points
-            self.app.level = 1 + (self.app.score // 150)
+            # Clamped as well as checked: one long phrase can jump several
+            # levels at once, and the results screen should read 27, not 29.
+            self.app.level = min(WIN_LEVEL, 1 + (self.app.score // POINTS_PER_LEVEL))
 
             self.sync_game_state()
+
+            if self.app.level >= WIN_LEVEL:
+                self.app.end_game(won=True)
+                return
 
             # Reset the input box immediately (will trigger a new Changed event with empty string)
             event.input.value = ""
@@ -350,6 +387,9 @@ class GravitypeApp(App):
     category = reactive("tech")
     high_score = reactive(0)
     is_new_high_score = False
+    #: True when the last run ended by reaching WIN_LEVEL rather than by
+    #: running out of lives.
+    is_win = False
 
     def __init__(self, *args, **kwargs) -> None:
         # Per-run bookkeeping for the stats page. Plain attributes, not
@@ -430,6 +470,7 @@ class GravitypeApp(App):
         self._run_active_seconds = 0.0
         self._run_started_at = time.monotonic()
         self._run_recorded = False
+        self.is_win = False
         self.session.reset()
         stats.record_game_started(self.category)
 
@@ -439,7 +480,18 @@ class GravitypeApp(App):
         except Exception:
             pass
 
-    def end_game(self) -> None:
+    def end_game(self, won: bool = False) -> None:
+        """Finish the run, either by winning or by running out of lives.
+
+        A match and a miss can land close enough together that both a win and
+        a loss try to end the same run; ``_run_recorded`` already marks a run
+        as finished, so whichever fires first is the outcome and the second
+        call does nothing.
+        """
+        if self._run_recorded:
+            return
+
+        self.is_win = won
         self._finish_run(completed=True)
         self.is_new_high_score = self.score > self.high_score
         if self.is_new_high_score:
