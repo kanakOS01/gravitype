@@ -138,15 +138,26 @@ class GameBoard(Widget):
                 else:
                     word.update_position(board_height)
 
+    #: Leftmost column a word is placed at, when there is room to inset it.
+    MIN_X = 2
+
     def spawn_word(self, word_text: str) -> None:
         width = self.size.width or 80
         word_len = len(word_text)
-        max_x = max(1, width - word_len - 2)
+
+        # Text wider than the board leaves no window to randomise within.
+        # Pinning it to the left edge keeps as much of it on screen as
+        # possible; randint() would raise on an empty range instead.
+        max_x = width - word_len - 2
+        if max_x < self.MIN_X:
+            best_x = 0 if max_x < 0 else max_x
+            self._mount_word(word_text, best_x)
+            return
 
         # Attempt to find a column with no close overlaps
-        best_x = random.randint(2, max_x)
+        best_x = random.randint(self.MIN_X, max_x)
         for _ in range(5):
-            x = random.randint(2, max_x)
+            x = random.randint(self.MIN_X, max_x)
             overlapping = False
             for active in self.active_words:
                 if active.y < 3 and abs(active.x - x) < (word_len + 4):
@@ -156,8 +167,11 @@ class GameBoard(Widget):
                 best_x = x
                 break
 
+        self._mount_word(word_text, best_x)
+
+    def _mount_word(self, word_text: str, x: int) -> None:
         move_ticks, _ = self.get_ticks_for_level(self.level)
-        word_widget = WordWidget(word_text, best_x, 0, move_ticks)
+        word_widget = WordWidget(word_text, x, 0, move_ticks)
         self.mount(word_widget)
         self.active_words.append(word_widget)
         word_widget.update_position(self.size.height or 20)
@@ -167,6 +181,10 @@ class GameBoard(Widget):
         Checks if the typed word matches any active words.
         If multiple words match, deletes the lowest one (highest y-coord).
         Returns points scored (0 if no match).
+
+        Matching is case-sensitive, so a custom word set written with capitals
+        has to be typed with them. Interior spaces are significant too, which
+        is what lets a multi-word phrase be typed out in full.
         """
         typed_clean = typed_word.strip()
         matches = [w for w in self.active_words if w.text == typed_clean]

@@ -205,3 +205,80 @@ async def test_spawned_words_stay_inside_the_board(board):
     for word in board.active_words:
         assert word.x >= 2
         assert word.x + len(word.text) <= width
+
+
+# --- long text placement (phrase support) ---
+
+
+@pytest.mark.parametrize("length", [10, 40, 80, 95, 97, 98, 120, 300])
+async def test_long_text_places_without_raising(board, length):
+    """Regression: max_x collapsed to 1 and randint(2, 1) raised ValueError.
+
+    Reachable with phrases, which are far longer than any built-in word.
+    """
+    board, pilot = board
+    text = "x" * length
+
+    board.spawn_word(text)
+    await pilot.pause()
+
+    assert board.active_words[-1].text == text
+
+
+async def test_text_wider_than_the_board_is_pinned_to_the_left(board):
+    board, pilot = board
+    board.spawn_word("x" * (board.size.width + 50))
+    await pilot.pause()
+
+    assert board.active_words[-1].x == 0
+
+
+async def test_placement_still_insets_when_there_is_room(board):
+    board, pilot = board
+    for _ in range(20):
+        board.spawn_word("rust")
+    await pilot.pause()
+
+    assert all(word.x >= board.MIN_X for word in board.active_words)
+
+
+# --- phrases and case ---
+
+
+async def test_a_phrase_matches_when_typed_in_full(board):
+    board, pilot = board
+    board.spawn_word("borrow checker")
+    await pilot.pause()
+
+    assert board.check_match("borrow checker") == 140
+    assert board.active_words == []
+
+
+async def test_a_phrase_does_not_match_on_its_first_word(board):
+    board, pilot = board
+    board.spawn_word("borrow checker")
+    await pilot.pause()
+
+    assert board.check_match("borrow") == 0
+    assert len(board.active_words) == 1
+
+
+async def test_matching_is_case_sensitive(board):
+    """A set written with capitals has to be typed with them."""
+    board, pilot = board
+    board.spawn_word("Borrow Checker")
+    await pilot.pause()
+
+    assert board.check_match("borrow checker") == 0
+    assert len(board.active_words) == 1
+
+    assert board.check_match("Borrow Checker") > 0
+    assert board.active_words == []
+
+
+async def test_interior_spaces_are_significant(board):
+    board, pilot = board
+    board.spawn_word("borrow checker")
+    await pilot.pause()
+
+    assert board.check_match("borrowchecker") == 0

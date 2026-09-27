@@ -70,7 +70,7 @@ uv run gravitype
 ## Features
 
 - Falling-word gameplay with difficulty that ramps up as you score
-- Two word categories: **Tech** and **General**
+- Two word categories: **Tech** and **General**, plus any custom sets you add
 - 7 colour themes (Dracula, Nord, Tokyo Night, Gruvbox, Catppuccin, Cyberspace, 80s After Dark)
 - Configurable starting lives (3 / 5 / 8) and bell-on-miss sound
 - Persistent high score
@@ -113,6 +113,35 @@ The input box flashes on a hit, and turns red the moment what you have typed is 
 | `ctrl+g` | Quit to menu (run is not scored) |
 | `ctrl+w` | Clear the word being typed |
 
+## Custom word sets
+
+Drop a `.txt` file into `~/.gravitype/words/` and it becomes a category. The
+filename is the name, so `rust.txt` adds **Rust** to the category dropdown
+alongside Tech and General:
+
+```bash
+mkdir -p ~/.gravitype/words
+cat > ~/.gravitype/words/rust.txt <<'EOF'
+rust
+cargo
+borrow checker
+trait bound
+EOF
+```
+
+One entry per line. Leading and trailing whitespace is trimmed, blank lines are
+skipped and exact repeats are dropped — everything else is kept as written:
+
+- **Phrases work.** `borrow checker` falls as one item and is typed out in full,
+  spaces and all.
+- **Capitals work, and matter.** Matching is case-sensitive, so `Borrow Checker`
+  has to be typed with its capitals, and `Rust` and `rust` are two different
+  entries.
+- Digits and punctuation are fine — `utf-8`, `python3`, `don't`.
+- **Entries must be printable ASCII.** Accented and non-Latin text (`café`,
+  `日本語`) is skipped, since it can't be typed on a plain keyboard. That rule is
+  also what stops a non-text file loading as a category of garbage.
+
 ## Configuration
 
 Settings are edited in-game (`ctrl+s`) and stored in `~/.gravitype/`, so your high score follows you regardless of which directory you launch from:
@@ -121,6 +150,7 @@ Settings are edited in-game (`ctrl+s`) and stored in `~/.gravitype/`, so your hi
 ~/.gravitype/
   config.json            your settings and high score
   stats.json             your lifetime play and typing stats
+  words/                 your own word sets, one .txt per set
   theme_active.tcss      generated stylesheet, safe to delete
 ```
 
