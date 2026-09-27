@@ -332,3 +332,121 @@ async def test_typing_figures_reach_the_lifetime_stats(app):
         assert snap["words_hit"] == 1
         assert snap["best_wpm"] > 0
         assert snap["accuracy"] is not None
+
+
+# --- phrases ---
+
+
+async def test_typing_a_phrase_matches_and_scores(app):
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        board, field = await _in_game(app, pilot)
+        board.spawn_word("borrow checker")
+        await pilot.pause()
+
+        await type_word(pilot, field, "borrow checker")
+
+        assert app.score == 140
+        assert field.value == ""
+
+
+async def test_a_phrase_space_counts_as_a_keystroke(app):
+    """Regression: the input is stripped before the growth test, so the space
+    in a phrase used to slip past the accuracy counter."""
+    phrase = "borrow checker"
+
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        board, field = await _in_game(app, pilot)
+        board.spawn_word(phrase)
+        await pilot.pause()
+
+        await type_word(pilot, field, phrase)
+
+        assert app.session.total_keystrokes == len(phrase)
+        assert app.session.accuracy == 1.0
+
+
+async def test_a_phrase_is_not_flagged_as_a_typo_partway_through(app):
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        board, field = await _in_game(app, pilot)
+        board.spawn_word("borrow checker")
+        await pilot.pause()
+
+        for length in range(1, len("borrow checker")):
+            field.value = "borrow checker"[:length]
+            await pilot.pause()
+            assert not field.has_class("typo"), f"typo flagged at {length}"
+
+
+async def test_a_phrase_is_timed_from_its_first_keystroke(app):
+    phrase = "borrow checker"
+
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        board, field = await _in_game(app, pilot)
+        clock = fake_clock(app)
+        board.spawn_word(phrase)
+        await pilot.pause()
+
+        await type_word(pilot, field, phrase, clock, step=0.1)
+
+        # 14 chars = 2.8 words, over 13 gaps of 0.1s.
+        assert app.session.words_hit == 1
+        assert app.session.wpm == pytest.approx((len(phrase) / 5) / (1.3 / 60))
+
+
+async def test_a_capitalised_word_must_be_typed_with_its_capitals(app):
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        board, field = await _in_game(app, pilot)
+        board.spawn_word("Rust")
+        await pilot.pause()
+
+        await type_word(pilot, field, "rust")
+
+        assert app.score == 0
+        assert len(board.active_words) == 1
+
+
+async def test_a_capitalised_word_matches_when_typed_exactly(app):
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        board, field = await _in_game(app, pilot)
+        board.spawn_word("Rust")
+        await pilot.pause()
+
+        await type_word(pilot, field, "Rust")
+
+        assert app.score == 40
+        assert board.active_words == []
+
+
+async def test_the_wrong_case_is_flagged_as_a_typo(app):
+    """Case-sensitive matching means a lowercase start is not a valid prefix."""
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        board, field = await _in_game(app, pilot)
+        board.spawn_word("Rust")
+        await pilot.pause()
+
+        field.value = "r"
+        await pilot.pause()
+
+        assert field.has_class("typo")
+
+
+async def test_a_capitalised_phrase_is_not_flagged_when_typed_exactly(app):
+    phrase = "Borrow Checker"
+
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        board, field = await _in_game(app, pilot)
+        board.spawn_word(phrase)
+        await pilot.pause()
+
+        for length in range(1, len(phrase)):
+            field.value = phrase[:length]
+            await pilot.pause()
+            assert not field.has_class("typo"), f"typo flagged at {length}"

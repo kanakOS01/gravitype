@@ -3,6 +3,7 @@ from textual.app import ComposeResult
 from textual.containers import Container, Horizontal
 from textual.widget import Widget
 from textual.widgets import Label, Static, Select
+from gravitype.core import words
 from gravitype.core.config import config, generate_theme_file
 from gravitype.core.session import format_percent, format_wpm
 from gravitype.core.stats import format_duration, stats
@@ -56,6 +57,37 @@ class HelpScreen(Widget):
             yield Label("HOW TO PLAY & KEYBINDS", classes="help-title")
             yield Table("General Navigation", GENERAL_KEYBINDS)
             yield Table("Active Gameplay", TYPING_KEYBINDS)
+            yield Table(
+                f"Word Sets  ({words.words_dir()})",
+                title_prefix=" \U000f0219 ",
+                key_ratio=2,
+                id="help-word-sets",
+            )
+
+    def on_mount(self) -> None:
+        self.sync_word_sets()
+
+    def sync_word_sets(self) -> None:
+        """List the custom sets found, and any file that was not loaded.
+
+        A file that fails to load is otherwise invisible - it just does not
+        appear in the menu, with no hint as to why.
+        """
+        rows = [
+            (name.upper(), f"{len(entries)} entries")
+            for name, entries in sorted(words.custom_sets().items())
+        ]
+        rows += [
+            (filename, f"skipped - {reason}")
+            for filename, reason in sorted(words.skipped_files().items())
+        ]
+        if not rows:
+            rows = [("none yet", "drop a .txt file in the folder above")]
+
+        try:
+            self.query_one("#help-word-sets", Table).set_rows(rows)
+        except Exception:
+            pass
 
 
 class StatsScreen(Widget):
@@ -100,8 +132,14 @@ class StatsScreen(Widget):
             ("Total Time Played", format_duration(data["total_play_seconds"])),
         ]
 
+        # A deleted word set keeps its history in stats.json, but listing a
+        # category you can no longer play is just clutter.
+        playable = set(words.available_categories())
+
         categories = []
         for name, values in sorted(data["categories"].items()):
+            if name not in playable:
+                continue
             categories.append(
                 (
                     name.upper(),

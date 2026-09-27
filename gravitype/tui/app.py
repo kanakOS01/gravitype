@@ -4,11 +4,12 @@ from textual import on
 from textual.app import App
 from textual.screen import Screen
 from textual.widget import Widget
-from textual.widgets import Button, Label, Input, ContentSwitcher, Footer
+from textual.widgets import Button, Label, Input, ContentSwitcher, Footer, Select
 from textual.containers import Container, Horizontal
 from textual.reactive import reactive
 
 from gravitype.core.config import config, generate_theme_file
+from gravitype.core import words
 from gravitype.core.session import RunSession, format_percent, format_wpm
 from gravitype.core.stats import format_duration, stats
 from gravitype.tui.widgets.header import HeaderWidget
@@ -28,14 +29,26 @@ from gravitype.tui.widgets.screens import (
 class WelcomeScreen(Widget):
     """The initial welcome screen for category selection and game start."""
 
+    #: Categories currently in the dropdown, so a refresh that changes nothing
+    #: leaves the widget untouched.
+    _listed_categories = ()
+
     def compose(self):
         with Container(id="menu-container"):
             yield Banner(classes="title")
 
-            yield Label("Select Category:")
-            with Horizontal(id="category-container"):
-                yield Button("Tech", id="cat-tech", classes="category-btn active")
-                yield Button("General", id="cat-general", classes="category-btn")
+            yield Label("Select Category:", classes="category-label")
+            # Wrapped so the fixed-width dropdown centres, the same way the
+            # action row centres its buttons.
+            with Horizontal(classes="category-row"):
+                # Seeded from whatever was loaded at import, because a Select
+                # that cannot be blank also cannot be built empty. on_mount
+                # re-scans and corrects this before the screen is shown.
+                yield Select(
+                    self._category_options(words.available_categories()),
+                    allow_blank=False,
+                    id="category-select",
+                )
 
             yield Label("", id="high-score-label", classes="label-info")
             with Horizontal(classes="action-row"):
@@ -44,20 +57,50 @@ class WelcomeScreen(Widget):
     def on_mount(self) -> None:
         # Sync initial state
         self.app.category = "tech"
+        self.refresh_categories()
         self.update_high_score()
+
+    def refresh_categories(self) -> None:
+        """Bring the dropdown in line with the currently available sets.
+
+        Re-scans the words directory first, so a file added while the game is
+        running shows up on the next visit to the menu without a restart.
+        """
+        words.refresh()
+        categories = words.available_categories()
+
+        # A set can vanish between visits if its file was deleted.
+        if self.app.category not in categories:
+            self.app.category = categories[0]
+
+        select = self.query_one("#category-select", Select)
+
+        # Only rebuild when the list actually changed: set_options() closes an
+        # open dropdown and clears the selection, which would be a visible
+        # twitch on every visit to the menu.
+        if categories != self._listed_categories:
+            self._listed_categories = categories
+            select.set_options(self._category_options(categories))
+
+        # Restore the selection, since set_options() drops it.
+        select.value = self.app.category
+
+    @staticmethod
+    def _category_options(categories):
+        """Category names as (label, value) pairs for the dropdown."""
+        return [(name.title(), name) for name in categories]
 
     def update_high_score(self) -> None:
         label = self.query_one("#high-score-label")
         label.update(f"High Score: {self.app.high_score:05d}")
 
+    @on(Select.Changed, "#category-select")
+    def on_category_changed(self, event: Select.Changed) -> None:
+        if event.value is not Select.BLANK:
+            self.app.category = event.value
+
     def on_button_pressed(self, event: Button.Pressed) -> None:
-        button_id = event.button.id
-        if button_id.startswith("cat-"):
-            for btn in self.query(".category-btn"):
-                btn.remove_class("active")
-            event.button.add_class("active")
-            self.app.category = button_id.replace("cat-", "")
-        elif button_id == "btn-start":
+        if event.button.id == "btn-start":
             self.app.start_new_game()
 
 
@@ -156,8 +199,9 @@ class GameScreen(Screen):
     def on_screen_resume(self) -> None:
         self.reset_game_state()
 
-    #: Last value seen in the input box, used to tell a typed character from
-    #: a backspace. Backspaces count towards neither accuracy total.
+    #: Last *raw* value seen in the input box, used to tell a typed character
+    #: from a backspace. Backspaces count towards neither accuracy total.
+    #: Held unstripped so the spaces inside a phrase still register.
     _previous_input = ""
 
     def reset_game_state(self) -> None:
@@ -181,8 +225,12 @@ class GameScreen(Screen):
         board.category = self.app.category
 
     def on_input_changed(self, event: Input.Changed) -> None:
-        typed = event.value.strip()
-        previous, self._previous_input = self._previous_input, typed
+        # Matching works on the stripped value, but keystroke counting needs
+        # the raw one: typing the space in "hello world" leaves the stripped
+        # value unchanged, and comparing those would lose the keystroke.
+        raw = event.value
+        typed = raw.strip()
+        previous_raw, self._previous_input = self._previous_input, raw
 
         if not typed:
             event.input.remove_class("typo")
@@ -193,7 +241,7 @@ class GameScreen(Screen):
 
         # A burst is timed from the keystroke that first put something in the
         # box to the one that completes the word.
-        if not previous:
+        if not previous_raw.strip():
             session.start_word()
 
         score_gained = board.check_match(typed)
@@ -202,11 +250,12 @@ class GameScreen(Screen):
         # check_match only matches on an exact equality, so a hit means the
         # word typed *is* `typed` - no need for the board to hand it back.
         # A valid prefix is what the game already uses to decide on the red
-        # flash below; it doubles as the per-keystroke accuracy signal.
+        # flash below; it doubles as the per-keystroke accuracy signal. Matched
+        # case-sensitively, for the same reason check_match is.
         has_valid_prefix = score_gained > 0 or any(
             w.text.startswith(typed) for w in board.active_words
         )
-        if len(typed) > len(previous):
+        if len(raw) > len(previous_raw):
             session.record_keystroke(has_valid_prefix)
 
         if score_gained > 0:
@@ -317,7 +366,12 @@ class MainScreen(Screen):
         self.query_one(MainHeader).set_active(screen_name)
         if screen_name == "welcome":
             welcome_screen = self.query_one(WelcomeScreen)
+            # Re-scan first: a word set added since the last visit should
+            # appear without a restart.
+            welcome_screen.refresh_categories()
             welcome_screen.update_high_score()
+        elif screen_name == "help":
+            self.query_one(HelpScreen).sync_word_sets()
         elif screen_name == "stats":
             # Re-read from disk so a run that just ended is reflected.
             self.query_one(StatsScreen).sync_stats()

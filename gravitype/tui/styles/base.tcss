@@ -59,33 +59,45 @@ WelcomeScreen, GameOverScreen {
     color: $text-color;
 }
 
-/* Category Selection Row */
-#category-container {
-    layout: horizontal;
-    height: 3;
-    margin-bottom: 2;
-    align: center middle;
+/* Category Selection */
+.category-label {
     width: 100%;
+    content-align: center middle;
+    color: $text-color;
+    margin-bottom: 1;
 }
 
-.category-btn {
-    width: 15;
-    margin: 0 1;
+.category-row {
+    width: 100%;
+    height: auto;
+    align: center middle;
+    margin-bottom: 2;
+}
+
+#category-select {
+    width: 34;
+}
+
+#category-select > SelectCurrent {
     background: $bg-color;
-    color: $sub-color;
+    color: $main-color;
     border: tall $main-color 30%;
 }
 
-.category-btn:hover {
+#category-select:focus > SelectCurrent {
     border: tall $main-color;
-    color: $main-color;
 }
 
-.category-btn.active {
+#category-select > SelectOverlay {
+    background: $sub-alt-color;
+    color: $text-color;
+    border: tall $main-color;
+}
+
+#category-select > SelectOverlay > .option-list--option-highlighted {
     background: $main-color;
     color: $bg-color;
     text-style: bold;
-    border: tall $main-color;
 }
 
 /* Action Buttons */
