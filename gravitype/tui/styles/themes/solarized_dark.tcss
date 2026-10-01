@@ -1,0 +1,10 @@
+$bg-color: #002b36;
+$main-color: #268bd2;
+$caret-color: #93a1a1;
+$sub-color: #586e75;
+$sub-alt-color: #073642;
+$text-color: #839496;
+$error-color: #dc322f;
+$error-extra-color: #7d1f1d;
+$colorful-error-color: #7d1f1d;
+$colorful-error-extra-color: #7d1f1d
