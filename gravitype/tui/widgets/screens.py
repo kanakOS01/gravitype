@@ -183,6 +183,7 @@ class SettingsScreen(Widget):
                         ("Catppuccin", "catppuccin"),
                         ("Cyberspace", "cyberspace"),
                         ("80s Dark", "80s_after_dark"),
+                        ("Solarized Dark", "solarized_dark"),
                     ],
                     value=config.get("theme"),
                     allow_blank=False,
