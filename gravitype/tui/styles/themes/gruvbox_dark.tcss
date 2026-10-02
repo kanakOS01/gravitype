@@ -8,3 +8,5 @@ $error-color: #fb4934;
 $error-extra-color: #cc241d;
 $colorful-error-color: #cc241d;
 $colorful-error-extra-color: #9d0006;
+$flash-hit-color: #004d26;
+$flash-miss-color: #4d0013;

@@ -2,6 +2,7 @@ import time
 
 from textual import on
 from textual.app import App
+from textual.binding import Binding
 from textual.screen import Screen
 from textual.widget import Widget
 from textual.widgets import Button, Label, Input, ContentSwitcher, Footer, Select
@@ -11,6 +12,7 @@ from textual.reactive import reactive
 from gravitype.core.config import config, generate_theme_file
 from gravitype.core import words
 from gravitype.core.session import RunSession, format_percent, format_wpm
+from gravitype.core.themes import other_mode
 from gravitype.core.stats import format_duration, stats
 from gravitype.tui.widgets.header import HeaderWidget
 from gravitype.tui.widgets.game_board import GameBoard
@@ -429,6 +431,13 @@ class GravitypeApp(App):
 
     ENABLE_COMMAND_PALETTE = False
 
+    #: The one app-wide binding - every other binding lives on a screen. It is
+    #: here so the appearance can be flipped from anywhere, including mid-run,
+    #: and ``priority`` so the focused game Input does not swallow it.
+    BINDINGS = [
+        Binding("ctrl+l", "toggle_mode", "Light/Dark", priority=True),
+    ]
+
     SCREENS = {
         "main": MainScreen,
         "game": GameScreen,
@@ -455,8 +464,33 @@ class GravitypeApp(App):
         self.session = RunSession()
         # Compile the active theme to a writable location, then hand the
         # generated file to Textual as this app's stylesheet.
-        css_path = generate_theme_file(config.get("theme"))
+        css_path = generate_theme_file(config.get("theme"), config.get("mode"))
         super().__init__(*args, **kwargs, css_path=css_path, watch_css=True)
+
+    def apply_theme(self) -> None:
+        """Recompile the active stylesheet and repaint without a restart.
+
+        ``watch_css`` already reloads the generated file when it changes, but
+        only on the file monitor's next poll. Driving the same reload directly
+        makes a theme change land on the keystroke instead of a tick later; if
+        a future Textual renames it, the monitor still catches up on its own.
+        """
+        generate_theme_file(config.get("theme"), config.get("mode"))
+        try:
+            self.call_later(self._on_css_change)
+        except AttributeError:
+            pass
+
+    def action_toggle_mode(self) -> None:
+        """Flip between the dark and light variant of the current theme."""
+        mode = other_mode(config.get("mode"))
+        config.set("mode", mode)
+        self.apply_theme()
+        # Keep the Appearance dropdown in step. Queried off the *current*
+        # screen - the settings page is only mounted on the menu, and from the
+        # board or the results there is nothing to update.
+        for settings in self.screen.query(SettingsScreen):
+            settings.sync_settings()
 
     def on_mount(self) -> None:
         self.high_score = config.get("high_score", 0)

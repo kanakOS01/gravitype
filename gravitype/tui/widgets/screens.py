@@ -4,13 +4,15 @@ from textual.containers import Container, Horizontal
 from textual.widget import Widget
 from textual.widgets import Label, Static, Select
 from gravitype.core import words
-from gravitype.core.config import config, generate_theme_file
+from gravitype.core.config import config
+from gravitype.core.themes import family_options
 from gravitype.core.session import format_percent, format_wpm
 from gravitype.core.stats import format_duration, stats
 from gravitype.tui.widgets.table import Table
 
 GENERAL_KEYBINDS = [
     ("ctrl+q", "Quit App"),
+    ("ctrl+l", "Toggle Light / Dark Appearance"),
     ("ctrl+s", "Navigate to Settings"),
     ("ctrl+h / ?", "Navigate to Help"),
     ("ctrl+a", "Navigate to About"),
@@ -171,20 +173,25 @@ class SettingsScreen(Widget):
         with Container(classes="settings-container"):
             yield Label("SETTINGS", classes="settings-title")
 
+            # Appearance (dark / light). Every theme has both variants, so
+            # this is independent of the theme choice below.
+            with Horizontal(classes="setting-row"):
+                yield Label("Appearance", classes="setting-label")
+                yield Select(
+                    options=[
+                        ("Dark", "dark"),
+                        ("Light", "light"),
+                    ],
+                    value=config.get("mode"),
+                    allow_blank=False,
+                    id="select-mode",
+                )
+
             # Theme selection
             with Horizontal(classes="setting-row"):
                 yield Label("Color Theme", classes="setting-label")
                 yield Select(
-                    options=[
-                        ("Dracula", "dracula"),
-                        ("Nord", "nord"),
-                        ("Tokyo Night", "tokyonight"),
-                        ("Gruvbox", "gruvbox_dark"),
-                        ("Catppuccin", "catppuccin"),
-                        ("Cyberspace", "cyberspace"),
-                        ("80s Dark", "80s_after_dark"),
-                        ("Solarized Dark", "solarized_dark"),
-                    ],
+                    options=family_options(),
                     value=config.get("theme"),
                     allow_blank=False,
                     id="select-theme",
@@ -221,11 +228,13 @@ class SettingsScreen(Widget):
         self.sync_settings()
 
     def sync_settings(self) -> None:
+        mode_val = config.get("mode")
         theme_val = config.get("theme")
         sound_val = "on" if config.get("sound_enabled") else "off"
         lives_val = str(config.get("starting_lives"))
 
         try:
+            self.query_one("#select-mode", Select).value = mode_val
             self.query_one("#select-theme", Select).value = theme_val
             self.query_one("#select-sound", Select).value = sound_val
             self.query_one("#select-lives", Select).value = lives_val
@@ -242,7 +251,10 @@ class SettingsScreen(Widget):
 
         if select_id == "select-theme":
             config.set("theme", value)
-            generate_theme_file(value)
+            self.app.apply_theme()
+        elif select_id == "select-mode":
+            config.set("mode", value)
+            self.app.apply_theme()
         elif select_id == "select-sound":
             config.set("sound_enabled", value == "on")
         elif select_id == "select-lives":
