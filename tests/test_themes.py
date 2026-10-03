@@ -67,6 +67,26 @@ def test_base_stylesheet_has_no_hardcoded_colours():
     assert offenders == []
 
 
+def test_widgets_that_default_to_textual_colours_are_restyled():
+    """Guard against theme-escaping widget internals.
+
+    Several Textual widgets colour their parts from Textual's own palette,
+    which does not follow the chosen theme. That is invisible on a dark
+    background and glaring on a light one, so each of these has to be
+    restated in base.tcss.
+    """
+    base = (THEMES_DIR.parent / "base.tcss").read_text()
+
+    for selector in (
+        "FooterKey > .footer-key--key",
+        "FooterKey > .footer-key--description",
+        "SelectCurrent .arrow",
+        "SelectOverlay > .option-list--option",
+        "SelectOverlay > .option-list--option-highlighted",
+    ):
+        assert selector in base, f"{selector} is left on Textual's own colours"
+
+
 def test_dark_and_light_are_different_files():
     for family in THEME_FAMILIES:
         assert resolve(family, "dark") != resolve(family, "light")

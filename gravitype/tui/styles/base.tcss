@@ -422,17 +422,48 @@ Select:focus > SelectCurrent {
     color: $text-color;
 }
 
+/* The placeholder, the chosen value and the arrow are separate children of
+   SelectCurrent, each coloured from Textual's own palette by default. That
+   palette does not follow the theme, so on a light background they come out
+   near-white. Every one of them is restated here. */
 SelectCurrent Static#label {
     color: $sub-color;
 }
 
 SelectCurrent.-has-value Static#label {
     color: $text-color;
+    text-style: bold;
 }
 
+SelectCurrent .arrow {
+    color: $main-color;
+}
+
+SelectCurrent:hover .arrow {
+    color: $main-color;
+}
+
+/* Same story for the dropdown: it is an OptionList underneath. */
 SelectOverlay {
-    border: tall $sub-color;
-    background: $bg-color;
+    border: tall $main-color;
+    background: $sub-alt-color;
+    color: $text-color;
+}
+
+SelectOverlay > .option-list--option {
+    background: $sub-alt-color;
+    color: $text-color;
+}
+
+SelectOverlay > .option-list--option-highlighted {
+    background: $main-color;
+    color: $bg-color;
+    text-style: bold;
+}
+
+SelectOverlay > .option-list--option-hover {
+    background: $sub-color;
+    color: $bg-color;
 }
 
 /* Results screen (post-game) */
