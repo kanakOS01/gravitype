@@ -4,7 +4,8 @@ import pytest
 
 from gravitype.core.config import config
 from gravitype.core.stats import stats
-from gravitype.tui.app import MainScreen, WelcomeScreen
+from gravitype.core.themes import resolve
+from gravitype.tui.app import GameOverScreen, GameScreen, MainScreen, WelcomeScreen
 from gravitype.tui.widgets.main_header import MainHeader, NavItem
 from gravitype.tui.widgets.screens import StatsScreen
 from gravitype.tui.widgets.table import Table
@@ -183,6 +184,138 @@ async def test_changing_theme_regenerates_the_stylesheet(app, isolated_home):
         assert (
             "nord" in (isolated_home / "theme_active.tcss").read_text().splitlines()[0]
         )
+
+
+@pytest.mark.parametrize("key", ["ctrl+n", "ctrl+enter"])
+async def test_quick_play_starts_a_run_from_the_menu(app, key):
+    async with app.run_test() as pilot:
+        await pilot.pause()
+
+        await pilot.press(key)
+        await pilot.pause()
+
+        assert isinstance(app.screen, GameScreen)
+
+
+async def test_quick_play_works_from_a_non_play_page(app):
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        await pilot.press("ctrl+t")
+        await pilot.pause()
+
+        await pilot.press("ctrl+n")
+        await pilot.pause()
+
+        assert isinstance(app.screen, GameScreen)
+
+
+async def test_quick_play_keeps_the_chosen_category(app):
+    from textual.widgets import Select
+
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        _main(app).query_one("#category-select", Select).value = "general"
+        await pilot.pause()
+
+        await pilot.press("ctrl+n")
+        await pilot.pause()
+
+        assert app.category == "general"
+
+
+async def test_quick_play_leaves_a_run_in_progress_alone(app):
+    """The shortcut skips the menu; it does not discard the game you are in."""
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        await pilot.press("ctrl+n")
+        await pilot.pause()
+        app.score = 420
+
+        await pilot.press("ctrl+n")
+        await pilot.pause()
+
+        assert app.score == 420
+
+
+async def test_quick_play_restarts_from_the_results_screen(app):
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        await pilot.press("ctrl+n")
+        await pilot.pause()
+        app.end_game(won=False)
+        await pilot.pause()
+        assert isinstance(app.screen, GameOverScreen)
+
+        await pilot.press("ctrl+n")
+        await pilot.pause()
+
+        assert isinstance(app.screen, GameScreen)
+        assert app.score == 0
+
+
+async def test_ctrl_l_flips_the_appearance_and_repaints(app, isolated_home):
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        assert config.get("mode") == "dark"
+
+        await pilot.press("ctrl+l")
+        await pilot.pause()
+
+        assert config.get("mode") == "light"
+        active = (isolated_home / "theme_active.tcss").read_text()
+        assert resolve(config.get("theme"), "light") in active.splitlines()[0]
+
+        await pilot.press("ctrl+l")
+        await pilot.pause()
+
+        assert config.get("mode") == "dark"
+
+
+async def test_ctrl_l_works_mid_run_despite_the_focused_input(app):
+    """The game Input binds plenty of ctrl keys; this one has to win."""
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        app.start_new_game()
+        await pilot.pause()
+
+        await pilot.press("ctrl+l")
+        await pilot.pause()
+
+        assert config.get("mode") == "light"
+
+
+async def test_appearance_select_keeps_the_chosen_theme(app, isolated_home):
+    from textual.widgets import Select
+
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        await pilot.press("ctrl+s")
+        await pilot.pause()
+
+        _main(app).query_one("#select-theme", Select).value = "gruvbox"
+        await pilot.pause()
+        _main(app).query_one("#select-mode", Select).value = "light"
+        await pilot.pause()
+
+        # Switching appearance stays inside the palette the player picked.
+        assert config.get("theme") == "gruvbox"
+        assert config.get("mode") == "light"
+        active = (isolated_home / "theme_active.tcss").read_text()
+        assert "gruvbox_light" in active.splitlines()[0]
+
+
+async def test_toggling_mode_syncs_the_settings_dropdown(app):
+    from textual.widgets import Select
+
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        await pilot.press("ctrl+s")
+        await pilot.pause()
+
+        await pilot.press("ctrl+l")
+        await pilot.pause()
+
+        assert _main(app).query_one("#select-mode", Select).value == "light"
 
 
 async def test_sound_toggle_persists(app):

@@ -10,6 +10,7 @@ from gravitype.core.config import (
     generate_theme_file,
 )
 from gravitype.core.paths import config_file, legacy_config_file
+from gravitype.core.themes import DEFAULT_FAMILY, DEFAULT_MODE
 
 
 def test_fresh_install_writes_defaults(isolated_home):
@@ -33,13 +34,38 @@ def test_roundtrips_through_disk(isolated_home):
         ("starting_lives", "8", 8),
         ("sound_enabled", 0, False),
         ("sound_enabled", "anything-truthy", True),
-        ("theme", 42, "42"),
     ],
 )
 def test_values_are_coerced_to_the_default_type(isolated_home, key, written, expected):
     config_file().write_text(json.dumps({key: written}))
 
     assert Config().get(key) == expected
+
+
+@pytest.mark.parametrize(
+    "key, written, expected",
+    [
+        # Theme and mode name files on disk, so an unknown value is clamped
+        # to the default rather than carried through as a string.
+        ("theme", 42, DEFAULT_FAMILY),
+        ("theme", "no-such-theme", DEFAULT_FAMILY),
+        ("mode", "sideways", DEFAULT_MODE),
+        ("mode", "light", "light"),
+        # Pre-1.2 configs stored a stylesheet name where a family id now goes.
+        ("theme", "gruvbox_dark", "gruvbox"),
+        ("theme", "solarized_dark", "solarized"),
+    ],
+)
+def test_appearance_values_are_clamped_to_known_ones(
+    isolated_home, key, written, expected
+):
+    config_file().write_text(json.dumps({key: written}))
+
+    assert Config().get(key) == expected
+
+
+def test_mode_defaults_to_dark(isolated_home):
+    assert Config().get("mode") == "dark"
 
 
 def test_unknown_keys_are_dropped(isolated_home):

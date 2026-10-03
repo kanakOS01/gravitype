@@ -71,7 +71,9 @@ uv run gravitype
 
 - Falling-word gameplay with difficulty that ramps up as you score
 - Two word categories: **Tech** and **General**, plus any custom sets you add
-- 7 colour themes (Dracula, Nord, Tokyo Night, Gruvbox, Catppuccin, Cyberspace, 80s After Dark)
+- 8 colour themes (Dracula, Nord, Tokyo Night, Gruvbox, Catppuccin, Cyberspace, 80s After Dark, Solarized), each in a dark and a light variant
+- Dark/light toggle on `ctrl+l`, from any screen including mid-run
+- Quick Play on `ctrl+enter` (or `ctrl+n`): straight into a run from wherever you are
 - Configurable starting lives (3 / 5 / 8) and bell-on-miss sound
 - A winnable ending: reach level 27 and the run is won
 - Persistent high score
@@ -101,11 +103,13 @@ The input box flashes on a hit, and turns red the moment what you have typed is 
 
 | Key | Action |
 | --- | --- |
+| `ctrl+enter` / `ctrl+n` | Quick Play — start a run immediately |
 | `ctrl+p` / `escape` | Play / back to menu |
 | `ctrl+s` | Settings |
 | `ctrl+h` | Help |
 | `ctrl+a` | About |
 | `ctrl+t` | Stats |
+| `ctrl+l` | Toggle light / dark |
 | `ctrl+q` | Quit |
 
 **In game**
@@ -115,6 +119,11 @@ The input box flashes on a hit, and turns red the moment what you have typed is 
 | `escape` | Pause / resume |
 | `ctrl+g` | Quit to menu (run is not scored) |
 | `ctrl+w` | Clear the word being typed |
+| `ctrl+l` | Toggle light / dark |
+
+`ctrl+enter` reaches the game only in terminals that support the kitty keyboard protocol (Kitty, Ghostty, WezTerm, foot, recent iTerm2). Everywhere else the terminal sends it as a plain `enter`, so `ctrl+n` is bound to the same action and always works.
+
+Quick Play keeps whichever category is selected, and does nothing while a run is already in progress — it skips the menu rather than discarding the game you are in.
 
 ## Custom word sets
 
@@ -169,6 +178,7 @@ GRAVITYPE_HOME=/tmp/gravitype-test gravitype
 {
     "high_score": 1790,
     "theme": "dracula",
+    "mode": "dark",
     "sound_enabled": true,
     "starting_lives": 5
 }
@@ -186,6 +196,7 @@ gravitype/
   __main__.py                enables `python -m gravitype`
   core/
     config.py                config load/save + theme compilation
+    themes.py                theme families and their dark/light stylesheets
     paths.py                 per-user config and cache locations
     words.py                 word pools and level-based word picking
   tui/
@@ -198,10 +209,12 @@ gravitype/
       table.py               keybind table
     styles/
       base.tcss              layout and component styles
-      themes/*.tcss          colour variables per theme
+      themes/*.tcss          colour variables, one file per theme variant
 ```
 
-Themes work by concatenation: on startup `generate_theme_file()` writes the selected theme's variables plus `base.tcss` into `~/.gravitype/theme_active.tcss`, and hands that path to Textual as the app's stylesheet. It is written outside the package so an installed, read-only copy still works, and it is safe to delete — it regenerates on next launch. Adding a theme means dropping a new `.tcss` of variables into `themes/` and adding it to the Settings dropdown.
+Themes work by concatenation: on startup `generate_theme_file()` writes the selected theme's variables plus `base.tcss` into `~/.gravitype/theme_active.tcss`, and hands that path to Textual as the app's stylesheet. It is written outside the package so an installed, read-only copy still works, and it is safe to delete — it regenerates on next launch.
+
+A theme is a *family* with one stylesheet per appearance, listed in `gravitype/core/themes.py`; `config.json` stores the family (`theme`) and the appearance (`mode`) separately, so `ctrl+l` flips between dark and light without leaving the palette you chose. Adding a theme means dropping a dark and a light `.tcss` of variables into `themes/` and adding one row to `THEME_FAMILIES` — the Settings dropdown and the test that checks every variant is complete both read from there.
 
 ## Contributing
 

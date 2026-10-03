@@ -7,4 +7,6 @@ $text-color: #839496;
 $error-color: #dc322f;
 $error-extra-color: #7d1f1d;
 $colorful-error-color: #7d1f1d;
-$colorful-error-extra-color: #7d1f1d
+$colorful-error-extra-color: #7d1f1d;
+$flash-hit-color: #004d26;
+$flash-miss-color: #4d0013;

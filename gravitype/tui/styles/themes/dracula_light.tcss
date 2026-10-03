@@ -1,0 +1,12 @@
+$bg-color: #faf6ff;
+$main-color: #5b3fc4;
+$caret-color: #5b3fc4;
+$sub-color: #5f5577;
+$sub-alt-color: #e9dcfa;
+$text-color: #1f1f1f;
+$error-color: #cb3a2a;
+$error-extra-color: #846e15;
+$colorful-error-color: #cb3a2a;
+$colorful-error-extra-color: #846e15;
+$flash-hit-color: #d7f0dc;
+$flash-miss-color: #fad6d2;

@@ -7,21 +7,38 @@ from gravitype.core.paths import (
     generated_css_file,
     legacy_config_file,
 )
+from gravitype.core.themes import (
+    DEFAULT_FAMILY,
+    DEFAULT_MODE,
+    normalize_family,
+    normalize_mode,
+    resolve,
+)
 
 DEFAULT_CONFIG = {
     "high_score": 0,
-    "theme": "dracula",
+    "theme": DEFAULT_FAMILY,
+    "mode": DEFAULT_MODE,
     "sound_enabled": True,
     "starting_lives": 3,
 }
 
 
 def _coerce(key, value):
-    """Cast a loaded value to the type of its default."""
+    """Cast a loaded value to the type of its default.
+
+    Theme and mode are also clamped to values that actually have a
+    stylesheet behind them, so a stale or hand-edited config.json cannot
+    leave the app with no styling at all.
+    """
     if isinstance(DEFAULT_CONFIG[key], bool):
         return bool(value)
     if isinstance(DEFAULT_CONFIG[key], int):
         return int(value)
+    if key == "theme":
+        return normalize_family(str(value))
+    if key == "mode":
+        return normalize_mode(str(value))
     return str(value)
 
 
@@ -89,19 +106,21 @@ class Config:
 config = Config()
 
 
-def generate_theme_file(theme_name: str) -> Path:
+def generate_theme_file(family: str, mode: str = DEFAULT_MODE) -> Path:
     """Compile the selected theme plus the base styles into one stylesheet.
 
+    ``family`` names a palette and ``mode`` picks its dark or light variant.
     Written outside the package so an installed, read-only copy still works.
     Returns the path written, which the app passes to Textual as its CSS.
     """
     styles_dir = Path(__file__).parent.parent / "tui" / "styles"
     themes_dir = styles_dir / "themes"
 
+    theme_name = resolve(family, mode)
     theme_path = themes_dir / f"{theme_name}.tcss"
     if not theme_path.exists():
-        theme_name = "dracula"
-        theme_path = themes_dir / "dracula.tcss"
+        theme_name = resolve(DEFAULT_FAMILY, DEFAULT_MODE)
+        theme_path = themes_dir / f"{theme_name}.tcss"
 
     base_path = styles_dir / "base.tcss"
     active_path = ensure_writable_dir(generated_css_file())

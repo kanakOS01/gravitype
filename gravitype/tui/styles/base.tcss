@@ -266,11 +266,11 @@ FloatingScoreWidget {
 
 /* Flash classes for input container on hit/miss */
 #input-container.flash-hit {
-    background: #004d26;
+    background: $flash-hit-color;
 }
 
 #input-container.flash-miss {
-    background: #4d0013;
+    background: $flash-miss-color;
 }
 
 #word-input.typo {
@@ -422,17 +422,48 @@ Select:focus > SelectCurrent {
     color: $text-color;
 }
 
+/* The placeholder, the chosen value and the arrow are separate children of
+   SelectCurrent, each coloured from Textual's own palette by default. That
+   palette does not follow the theme, so on a light background they come out
+   near-white. Every one of them is restated here. */
 SelectCurrent Static#label {
     color: $sub-color;
 }
 
 SelectCurrent.-has-value Static#label {
     color: $text-color;
+    text-style: bold;
 }
 
+SelectCurrent .arrow {
+    color: $main-color;
+}
+
+SelectCurrent:hover .arrow {
+    color: $main-color;
+}
+
+/* Same story for the dropdown: it is an OptionList underneath. */
 SelectOverlay {
-    border: tall $sub-color;
-    background: $bg-color;
+    border: tall $main-color;
+    background: $sub-alt-color;
+    color: $text-color;
+}
+
+SelectOverlay > .option-list--option {
+    background: $sub-alt-color;
+    color: $text-color;
+}
+
+SelectOverlay > .option-list--option-highlighted {
+    background: $main-color;
+    color: $bg-color;
+    text-style: bold;
+}
+
+SelectOverlay > .option-list--option-hover {
+    background: $sub-color;
+    color: $bg-color;
 }
 
 /* Results screen (post-game) */
@@ -518,26 +549,38 @@ Table {
     margin: 1 2;
 }
 
-/* Footer styling */
+/* Footer styling.
+
+   The footer is built from FooterKey widgets, each rendering its key and its
+   description through component classes - styling `Footer` alone leaves them
+   on Textual's own palette, which does not follow the theme. */
 Footer {
     background: $sub-alt-color;
     color: $sub-color;
     height: 1;
 }
 
-Footer > .footer--key {
+FooterKey {
+    background: $sub-alt-color;
+}
+
+FooterKey > .footer-key--key {
     background: $sub-alt-color;
     color: $main-color;
     text-style: bold;
 }
 
-Footer > .footer--highlight {
-    background: $main-color;
-    color: $bg-color;
+FooterKey > .footer-key--description {
+    background: $sub-alt-color;
+    color: $text-color;
 }
 
-Footer > .footer--highlight-key {
+FooterKey:hover {
+    background: $main-color;
+}
+
+FooterKey:hover > .footer-key--key,
+FooterKey:hover > .footer-key--description {
     background: $main-color;
     color: $bg-color;
-    text-style: bold;
 }
