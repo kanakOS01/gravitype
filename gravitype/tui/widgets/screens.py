@@ -12,6 +12,7 @@ from gravitype.tui.widgets.table import Table
 
 GENERAL_KEYBINDS = [
     ("ctrl+q", "Quit App"),
+    ("ctrl+enter / ctrl+n", "Quick Play (skip the menu)"),
     ("ctrl+l", "Toggle Light / Dark Appearance"),
     ("ctrl+s", "Navigate to Settings"),
     ("ctrl+h / ?", "Navigate to Help"),

@@ -436,6 +436,10 @@ class GravitypeApp(App):
     #: and ``priority`` so the focused game Input does not swallow it.
     BINDINGS = [
         Binding("ctrl+l", "toggle_mode", "Light/Dark", priority=True),
+        # ctrl+enter only reaches the app in terminals that speak the kitty
+        # keyboard protocol; elsewhere it arrives as a bare enter. ctrl+n is
+        # bound to the same action so the shortcut works everywhere.
+        Binding("ctrl+enter,ctrl+n", "quick_play", "Quick Play", priority=True),
     ]
 
     SCREENS = {
@@ -480,6 +484,16 @@ class GravitypeApp(App):
             self.call_later(self._on_css_change)
         except AttributeError:
             pass
+
+    def action_quick_play(self) -> None:
+        """Drop straight into a run from anywhere, keeping the current category.
+
+        A run already in progress is left alone: the shortcut is for skipping
+        the menu, not for throwing away the game you are in the middle of.
+        """
+        if not self._run_recorded:
+            return
+        self.start_new_game()
 
     def action_toggle_mode(self) -> None:
         """Flip between the dark and light variant of the current theme."""

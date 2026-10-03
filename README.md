@@ -73,6 +73,7 @@ uv run gravitype
 - Two word categories: **Tech** and **General**, plus any custom sets you add
 - 8 colour themes (Dracula, Nord, Tokyo Night, Gruvbox, Catppuccin, Cyberspace, 80s After Dark, Solarized), each in a dark and a light variant
 - Dark/light toggle on `ctrl+l`, from any screen including mid-run
+- Quick Play on `ctrl+enter` (or `ctrl+n`): straight into a run from wherever you are
 - Configurable starting lives (3 / 5 / 8) and bell-on-miss sound
 - A winnable ending: reach level 27 and the run is won
 - Persistent high score
@@ -102,6 +103,7 @@ The input box flashes on a hit, and turns red the moment what you have typed is 
 
 | Key | Action |
 | --- | --- |
+| `ctrl+enter` / `ctrl+n` | Quick Play — start a run immediately |
 | `ctrl+p` / `escape` | Play / back to menu |
 | `ctrl+s` | Settings |
 | `ctrl+h` | Help |
@@ -118,6 +120,10 @@ The input box flashes on a hit, and turns red the moment what you have typed is 
 | `ctrl+g` | Quit to menu (run is not scored) |
 | `ctrl+w` | Clear the word being typed |
 | `ctrl+l` | Toggle light / dark |
+
+`ctrl+enter` reaches the game only in terminals that support the kitty keyboard protocol (Kitty, Ghostty, WezTerm, foot, recent iTerm2). Everywhere else the terminal sends it as a plain `enter`, so `ctrl+n` is bound to the same action and always works.
+
+Quick Play keeps whichever category is selected, and does nothing while a run is already in progress — it skips the menu rather than discarding the game you are in.
 
 ## Custom word sets
 
